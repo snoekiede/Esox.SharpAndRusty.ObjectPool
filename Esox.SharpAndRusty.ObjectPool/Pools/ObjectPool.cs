@@ -1,0 +1,631 @@
+﻿using Esox.SharpAndRusty.ObjectPool.Interfaces;
+using Esox.SharpAndRusty.ObjectPool.Models;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Text;
+using Esox.SharpAndRusty.Extensions;
+using Esox.SharpAndRusty.ObjectPool.Constants;
+using Esox.SharpAndRusty.ObjectPool.Metrics;
+using Esox.SharpAndRusty.Types;
+
+namespace Esox.SharpAndRusty.ObjectPool.Pools;
+
+/// <summary>
+/// A threadsafe generic object pool
+/// </summary>
+/// <typeparam name="T">The type of object to be stored in the object pool</typeparam>
+public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposable, IAsyncDisposable where T : notnull
+{
+    /// <summary>
+    /// A concurrent stack of available objects for efficient O(1) operations
+    /// </summary>
+    protected ConcurrentStack<T> AvailableObjects;
+
+    /// <summary>
+    /// A concurrent dictionary of active objects for efficient O(1) lookups
+    /// </summary>
+    protected ConcurrentDictionary<T, byte> ActiveObjects;
+
+    /// <summary>
+    /// Pool statistics
+    /// </summary>
+    protected PoolStatistics statistics = new();
+
+    /// <summary>
+    /// Pool configuration
+    /// </summary>
+    protected readonly PoolConfiguration<T> Configuration;
+
+    /// <summary>
+    /// Logger instance
+    /// </summary>
+    protected readonly ILogger? Logger;
+
+    /// <summary>
+    /// Signals waiting callers that an object has been returned to the pool.
+    /// </summary>
+    protected readonly SemaphoreSlim _availabilitySignal = new(0, int.MaxValue);
+
+    /// <summary>
+    /// Flag to track if the pool has been disposed. Volatile ensures cross-thread visibility.
+    /// </summary>
+    protected volatile bool Disposed;
+
+    /// <summary>
+    /// Constructor for the object pool
+    /// </summary>
+    /// <param name="initialObjects">The list of initialized objects. The number of available objects does not change during the lifetime of the object-pool.</param>
+    public ObjectPool(List<T> initialObjects) : this(initialObjects, new PoolConfiguration<T>())
+    {
+    }
+
+    /// <summary>
+    /// Constructor for the object pool with configuration
+    /// </summary>
+    /// <param name="initialObjects">The list of initialized objects</param>
+    /// <param name="configuration">Pool configuration options</param>
+    /// <param name="logger">Logger instance</param>
+    public ObjectPool(List<T> initialObjects, PoolConfiguration<T>? configuration, ILogger<ObjectPool<T>>? logger = null)
+    {
+        this.Configuration = configuration ?? new PoolConfiguration<T>();
+        this.Logger = logger;
+        this.ActiveObjects = new ConcurrentDictionary<T, byte>();
+        this.AvailableObjects = new ConcurrentStack<T>(initialObjects);
+
+        if (initialObjects.Count > this.Configuration.MaxPoolSize)
+        {
+            throw new ArgumentException(string.Format(PoolConstants.Messages.InitialObjectsExceedMaxFormat,
+                initialObjects.Count, this.Configuration.MaxPoolSize));
+        }
+
+        logger?.LogInformation(PoolConstants.Messages.ObjectpoolCreatedWithInitialcountObjectsMaxpoolsizeMaxactive,
+            initialObjects.Count, this.Configuration.MaxPoolSize, this.Configuration.MaxActiveObjects);
+    }
+
+    /// <summary>
+    /// Returns an object from the pool. If no objects are available, an exception is thrown.
+    /// </summary>
+    /// <returns>A PoolModel object</returns>
+    /// <exception cref="NoObjectsInPoolException">Raised when no object could be found</exception>
+    public virtual Result<PoolModel<T>,Error> GetObject()
+    {
+        if (Disposed)
+        {
+            return Result<PoolModel<T>,Error>.Err(Error.New("ObjectPool has been disposed."));
+        }
+
+        Logger?.LogDebug(PoolConstants.Messages.AttemptingToGetObjectFromPoolAvailableCount, AvailableObjects.Count);
+
+        if (this.ActiveObjects.Count >= Configuration.MaxActiveObjects)
+        {
+            return Result<PoolModel<T>,Error>.Err(Error.New(string.Format(PoolConstants.Messages.MaxActiveLimitFormat,
+                Configuration.MaxActiveObjects)));
+        }
+
+        if (!this.AvailableObjects.TryPop(out var result))
+        {
+            statistics.IncrementPoolEmpty();
+            Logger?.LogWarning(PoolConstants.Messages.PoolEmpty);
+
+            return Result<PoolModel<T>, Error>.Err(Error.New(PoolConstants.Messages.NoObjectsAvailable));
+        }
+        this.ActiveObjects.TryAdd(result, 0);
+
+        statistics.IncrementRetrieved();
+        statistics.CurrentActiveObjects = this.ActiveObjects.Count;
+        statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
+        statistics.UpdatePeakIfHigher(statistics.CurrentActiveObjects);
+
+        Logger?.LogDebug(PoolConstants.Messages.ObjectRetrievedFromPoolActiveAvailable,
+            ActiveObjects.Count, AvailableObjects.Count);
+
+        return Result<PoolModel<T>,Error>.Ok(new PoolModel<T>(result, this));
+    }
+
+    
+
+    /// <summary>
+    /// Returns an object to the pool. If the object is not in the pool, an exception is thrown.
+    /// </summary>
+    /// <param name="obj">The object to be returned</param>
+    /// <exception cref="NoObjectsInPoolException">Raised if the object was not in the active objects list</exception>
+    public Result<Unit,Error> ReturnObject(PoolModel<T> obj)
+    {
+        if (Disposed)
+        {
+            return Result<Unit, Error>.Err(Error.New("ObjectPool has been disposed."));
+        }
+
+        var unwrapped = obj.Unwrap();
+
+        // Use TryRemove directly to avoid ContainsKey + TryRemove TOCTOU race.
+        if (!this.ActiveObjects.TryRemove(unwrapped, out _))
+        {
+            Logger?.LogWarning(PoolConstants.Messages.ObjectNotInActiveList);
+            return Result<Unit, Error>.Err(Error.New(PoolConstants.Messages.ObjectNotInPool));
+        }
+
+        // Validate object if configured
+        if (Configuration is { ValidateOnReturn: true, ValidationFunction: not null })
+        {
+            Result<T,Error> valid;
+            try { valid = Configuration.ValidationFunction(unwrapped); }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                Logger?.LogError(ex, "Validation function threw; discarding object");
+                valid = Result<T,Error>.Err(Error.New("Validation function threw; discarding object"));
+            }
+
+            if (valid.IsFailure)
+            {
+                Logger?.LogWarning(PoolConstants.Messages.ValidationFailed);
+                statistics.IncrementReturned();
+                statistics.CurrentActiveObjects = this.ActiveObjects.Count;
+                statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
+                return Result<Unit, Error>.Err(Error.New(PoolConstants.Messages.ValidationFailed));
+            }
+        }
+
+        // Check if we're exceeding pool size limit
+        if (this.AvailableObjects.Count >= Configuration.MaxPoolSize)
+        {
+            Logger?.LogDebug(PoolConstants.Messages.PoolAtMaxSize);
+            statistics.IncrementReturned();
+            statistics.CurrentActiveObjects = this.ActiveObjects.Count;
+            statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
+            return Result<Unit, Error>.Err(Error.New(PoolConstants.Messages.PoolAtMaxSize));
+        }
+
+        this.AvailableObjects.Push(unwrapped);
+        _availabilitySignal.Release();
+
+        statistics.IncrementReturned();
+        statistics.CurrentActiveObjects = this.ActiveObjects.Count;
+        statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
+
+        Logger?.LogDebug(PoolConstants.Messages.ObjectReturnedToPoolActiveAvailable,
+            ActiveObjects.Count, AvailableObjects.Count);
+        return Result<Unit, Error>.Ok(Unit.Value);
+    }
+
+    /// <summary>
+    /// Asynchronously returns an object to the pool with async validation support
+    /// </summary>
+    /// <param name="obj">The object to be returned</param>
+    /// <exception cref="NoObjectsInPoolException">Raised if the object was not in the active objects list</exception>
+    public async ValueTask<Result<Unit, Error>> ReturnObjectAsync(PoolModel<T> obj)
+    {
+        if (Disposed) return Result<Unit, Error>.Err(Error.New("Object is disposed"));
+
+        var unwrapped = obj.Unwrap();
+
+        // Use TryRemove directly to avoid ContainsKey + TryRemove TOCTOU race.
+        if (!this.ActiveObjects.TryRemove(unwrapped, out _))
+        {
+            Logger?.LogWarning(PoolConstants.Messages.ObjectNotInActiveList);
+            return Result<Unit, Error>.Err(Error.New(PoolConstants.Messages.ObjectNotInPool));
+        }
+
+        // Async validation takes precedence
+        if (Configuration is { ValidateOnReturn: true, AsyncValidationFunction: not null })
+        {
+            Result<Unit, Error> isValid;
+            try
+            {
+                isValid = await Configuration.AsyncValidationFunction(unwrapped).ConfigureAwait(false); 
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                Logger?.LogError(ex, "Async validation function threw; discarding object");
+                isValid = Result<Unit, Error>.Err(Error.New("Async validation function threw; discarding object"));
+            }
+
+            if (isValid.IsFailure)
+            {
+                Logger?.LogWarning(PoolConstants.Messages.ValidationFailed);
+                statistics.IncrementReturned();
+                statistics.CurrentActiveObjects = this.ActiveObjects.Count;
+                statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
+
+                // Dispose invalid object if configured
+                if (Configuration.UseAsyncDisposal)
+                {
+                    await DisposeObjectAsync(unwrapped).ConfigureAwait(false);
+                }
+                return Result<Unit, Error>.Err(Error.New(PoolConstants.Messages.ValidationFailed));
+            }
+        }
+        // Fall back to sync validation if no async validation
+        else if (Configuration is { ValidateOnReturn: true, ValidationFunction: not null })
+        {
+            Result<T, Error> valid;
+            try { valid = Configuration.ValidationFunction(unwrapped); }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                Logger?.LogError(ex, "Validation function threw; discarding object");
+                valid = Result<T, Error>.Err(Error.New("Validation function threw; discarding object"));
+            }
+
+            if (valid.IsFailure)
+            {
+                Logger?.LogWarning(PoolConstants.Messages.ValidationFailed);
+                statistics.IncrementReturned();
+                statistics.CurrentActiveObjects = this.ActiveObjects.Count;
+                statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
+                return Result<Unit, Error>.Err(Error.New(PoolConstants.Messages.ValidationFailed));
+            }
+        }
+
+        // Check if we're exceeding pool size limit
+        if (this.AvailableObjects.Count >= Configuration.MaxPoolSize)
+        {
+            Logger?.LogDebug(PoolConstants.Messages.PoolAtMaxSize);
+            statistics.IncrementReturned();
+            statistics.CurrentActiveObjects = this.ActiveObjects.Count;
+            statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
+            return Result<Unit, Error>.Err(Error.New(PoolConstants.Messages.PoolAtMaxSize));
+        }
+
+        this.AvailableObjects.Push(unwrapped);
+        _availabilitySignal.Release();
+
+        statistics.IncrementReturned();
+        statistics.CurrentActiveObjects = this.ActiveObjects.Count;
+        statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
+
+        Logger?.LogDebug(PoolConstants.Messages.ObjectReturnedToPoolActiveAvailable,
+            ActiveObjects.Count, AvailableObjects.Count);
+        return Result<Unit, Error>.Ok(Unit.Value);
+    }
+
+    /// <summary>
+    /// Gets the number of available objects in the pool
+    /// </summary>
+    public int AvailableObjectCount => AvailableObjects.Count;
+
+    /// <summary>
+    /// Gets the current pool statistics
+    /// </summary>
+    public PoolStatistics Statistics
+    {
+        get
+        {
+            statistics.CurrentActiveObjects = this.ActiveObjects.Count;
+            statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
+            return statistics;
+        }
+    }
+
+    #region IPoolHealth Implementation
+
+    /// <summary>
+    /// Checks if the pool is healthy
+    /// </summary>
+    public bool IsHealthy
+    {
+        get
+        {
+            var utilizationPct = UtilizationPercentage;
+            var hasAvailableObjects = AvailableObjects.Count > 0;
+            var notOverCapacity = ActiveObjects.Count < Configuration.MaxActiveObjects;
+
+            return hasAvailableObjects && notOverCapacity && utilizationPct < PoolConstants.Thresholds.CriticalUtilizationThreshold;
+        }
+    }
+
+    /// <summary>
+    /// Gets the utilization percentage of the pool
+    /// </summary>
+    public double UtilizationPercentage
+    {
+        get
+        {
+            var totalCapacity = Math.Min(Configuration.MaxActiveObjects, Configuration.MaxPoolSize);
+            if (totalCapacity == int.MaxValue) return 0.0; // Unlimited capacity
+
+            return (double)ActiveObjects.Count / totalCapacity * 100.0;
+        }
+    }
+
+    /// <summary>
+    /// Gets health status with details
+    /// </summary>
+    public PoolHealthStatus GetHealthStatus()
+    {
+        var status = new PoolHealthStatus
+        {
+            UtilizationPercentage = UtilizationPercentage,
+            LastChecked = DateTime.UtcNow,
+            Diagnostics =
+                {
+                    [PoolConstants.Diagnostics.TotalRetrieved] = statistics.TotalObjectsRetrieved,
+                    [PoolConstants.Diagnostics.TotalReturned] = statistics.TotalObjectsReturned,
+                    [PoolConstants.Diagnostics.PeakActive] = statistics.PeakActiveObjects,
+                    [PoolConstants.Diagnostics.PoolEmptyEvents] = statistics.PoolEmptyCount,
+                    [PoolConstants.Diagnostics.CurrentActive] = ActiveObjects.Count,
+                    [PoolConstants.Diagnostics.CurrentAvailable] = AvailableObjects.Count
+                }
+        };
+
+        // Check for warning conditions
+        if (AvailableObjects.Count == 0)
+        {
+            status.Warnings.Add(PoolConstants.Messages.NoAvailableObjects);
+            status.WarningCount++;
+        }
+
+        if (status.UtilizationPercentage > PoolConstants.Thresholds.HighUtilizationThreshold)
+        {
+            status.Warnings.Add(string.Format(PoolConstants.Messages.HighUtilizationFormat, status.UtilizationPercentage));
+            status.WarningCount++;
+        }
+
+        if (statistics.PoolEmptyCount > 0)
+        {
+            status.Warnings.Add(string.Format(PoolConstants.Messages.EmptyCountWarningFormat, statistics.PoolEmptyCount));
+            status.WarningCount++;
+        }
+
+        status.IsHealthy = IsHealthy;
+        status.HealthMessage = status.IsHealthy ? PoolConstants.Messages.PoolHealthy :
+            string.Format(PoolConstants.Messages.PoolWarningsFormat, status.WarningCount, string.Join(", ", status.Warnings));
+
+        return status;
+    }
+
+    #endregion
+
+    /// <summary>
+    /// Asynchronously get an object from the pool
+    /// </summary>
+    /// <param name="timeout">Maximum time to wait for an object</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>A poolmodel</returns>
+    public async Task<Result<PoolModel<T>, Error>> GetObjectAsync(TimeSpan timeout = default, CancellationToken cancellationToken = default)
+    {
+        if (Disposed)
+        {
+            return Result<PoolModel<T>, Error>.Err(Error.New("ObjectPool has been disposed"));
+        }
+
+        var effectiveTimeout = timeout == TimeSpan.Zero ? Configuration.DefaultTimeout : timeout;
+
+        Logger?.LogDebug("Starting async object retrieval with timeout: {Timeout}", effectiveTimeout);
+        var poolModel = GetObject();
+        // Try once without waiting before entering the semaphore loop.
+        if (poolModel.IsSuccess)
+        {
+            Logger?.LogDebug(PoolConstants.Messages.AsyncRetrievalSuccess);
+            return poolModel!;  
+        }
+
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(effectiveTimeout);
+
+        while (true)
+        {
+            bool signalled;
+            try
+            {
+                signalled = await _availabilitySignal
+                    .WaitAsync(effectiveTimeout, timeoutCts.Token)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    Logger?.LogDebug(PoolConstants.Messages.AsyncRetrievalCancelled);
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+                // Inner timeout CTS fired.
+                Logger?.LogWarning(PoolConstants.Messages.TimeoutWaitingFormat, effectiveTimeout);
+                throw new TimeoutException(string.Format(PoolConstants.Messages.TimeoutWaitingFormat, effectiveTimeout));
+            }
+
+            if (!signalled)
+            {
+                Logger?.LogWarning(PoolConstants.Messages.TimeoutWaitingFormat, effectiveTimeout);
+                throw new TimeoutException(string.Format(PoolConstants.Messages.TimeoutWaitingFormat, effectiveTimeout));
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            poolModel = GetObject();
+            if (poolModel.IsSuccess)
+            {
+                Logger?.LogDebug(PoolConstants.Messages.AsyncRetrievalSuccess);
+                return poolModel!;
+            }
+            // Another thread consumed the object; loop and wait again.
+        }
+    }
+
+    #region IPoolMetrics Implementation
+
+    /// <summary>
+    /// Export metrics with tags/labels for dimensional monitoring
+    /// </summary>
+    public Dictionary<string, object> ExportMetrics(Dictionary<string, string>? tags = null)
+    {
+        var metrics = new Dictionary<string, object>
+        {
+            [PoolConstants.Metrics.RetrievedTotal] = statistics.TotalObjectsRetrieved,
+            [PoolConstants.Metrics.ReturnedTotal] = statistics.TotalObjectsReturned,
+            [PoolConstants.Metrics.ActiveCurrent] = ActiveObjects.Count,
+            [PoolConstants.Metrics.AvailableCurrent] = AvailableObjects.Count,
+            [PoolConstants.Metrics.ActivePeak] = statistics.PeakActiveObjects,
+            [PoolConstants.Metrics.EmptyEventsTotal] = statistics.PoolEmptyCount,
+            [PoolConstants.Metrics.UtilizationPercentage] = UtilizationPercentage,
+            [PoolConstants.Metrics.HealthStatus] = IsHealthy ? 1 : 0,
+            [PoolConstants.Metrics.MaxSize] = Configuration.MaxPoolSize == int.MaxValue ? -1 : Configuration.MaxPoolSize,
+            [PoolConstants.Metrics.MaxActive] = Configuration.MaxActiveObjects == int.MaxValue ? -1 : Configuration.MaxActiveObjects,
+            [PoolConstants.Metrics.StartTime] = statistics.StatisticsStartTime,
+            [PoolConstants.Metrics.UptimeSeconds] = (DateTime.UtcNow - statistics.StatisticsStartTime).TotalSeconds
+        };
+
+        if (tags != null)
+        {
+            foreach (var tag in tags)
+            {
+                metrics[$"{PoolConstants.Metrics.TagPrefix}{tag.Key}"] = tag.Value;
+            }
+        }
+
+        return metrics;
+    }
+
+    /// <summary>
+    /// Convenience method to export metrics in Prometheus exposition format directly from the pool.
+    /// </summary>
+    /// <param name="tags">Optional tags to include as labels.</param>
+    /// <returns>Prometheus exposition formatted text.</returns>
+    public string ExportMetricsPrometheus(Dictionary<string, string>? tags = null)
+    {
+        return PrometheusExporter.ExportMetricsPrometheus(this, tags);
+    }
+
+    /// <summary>
+    /// Reset metrics counters (useful for testing or periodic resets)
+    /// </summary>
+    public void ResetMetrics()
+    {
+        Logger?.LogInformation(PoolConstants.Messages.ResettingMetrics);
+        statistics.Reset(ActiveObjects.Count, AvailableObjects.Count);
+    }
+
+    private static string GetMetricDescription(string metricKey)
+    {
+        return metricKey switch
+        {
+            PoolConstants.Metrics.RetrievedTotal => "Total number of objects retrieved from the pool",
+            PoolConstants.Metrics.ReturnedTotal => "Total number of objects returned to the pool",
+            PoolConstants.Metrics.ActiveCurrent => "Current number of active objects",
+            PoolConstants.Metrics.AvailableCurrent => "Current number of available objects in the pool",
+            PoolConstants.Metrics.ActivePeak => "Peak number of active objects",
+            PoolConstants.Metrics.EmptyEventsTotal => "Total number of times the pool was empty when requested",
+            PoolConstants.Metrics.UtilizationPercentage => "Pool utilization as a percentage",
+            PoolConstants.Metrics.HealthStatus => "Pool health status (1=healthy, 0=unhealthy)",
+            PoolConstants.Metrics.UptimeSeconds => "Pool uptime in seconds",
+            _ => "Pool metric"
+        };
+    }
+
+    private static string GetMetricType(string metricKey)
+    {
+        return metricKey switch
+        {
+            PoolConstants.Metrics.RetrievedTotal => PoolConstants.MetricTypes.Counter,
+            PoolConstants.Metrics.ReturnedTotal => PoolConstants.MetricTypes.Counter,
+            PoolConstants.Metrics.EmptyEventsTotal => PoolConstants.MetricTypes.Counter,
+            PoolConstants.Metrics.UptimeSeconds => PoolConstants.MetricTypes.Counter,
+            _ => PoolConstants.MetricTypes.Gauge
+        };
+    }
+
+    #endregion
+
+    #region IDisposable and IAsyncDisposable Implementation
+
+    /// <summary>
+    /// Asynchronously disposes the object pool and all pooled objects.
+    /// Prefers IAsyncDisposable over IDisposable when available.
+    /// </summary>
+    public virtual async ValueTask DisposeAsync()
+    {
+        if (Disposed)
+            return;
+
+        Logger?.LogInformation("Asynchronously disposing ObjectPool with {Active} active objects and {Available} available objects",
+            ActiveObjects.Count, AvailableObjects.Count);
+
+        // Dispose available objects
+        foreach (var obj in AvailableObjects)
+        {
+            await DisposeObjectAsync(obj).ConfigureAwait(false);
+        }
+
+        // Dispose active objects
+        foreach (var obj in ActiveObjects.Keys)
+        {
+            await DisposeObjectAsync(obj).ConfigureAwait(false);
+        }
+
+        AvailableObjects.Clear();
+        ActiveObjects.Clear();
+
+        _availabilitySignal.Dispose();
+        Disposed = true;
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Helper method to dispose an object, preferring async disposal if available
+    /// </summary>
+    protected virtual async ValueTask DisposeObjectAsync(T obj)
+    {
+        try
+        {
+            if (obj is IAsyncDisposable asyncDisposable)
+            {
+                await asyncDisposable.DisposeAsync().ConfigureAwait(false);
+            }
+            else if (obj is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            Logger?.LogWarning(ex, "Error disposing object of type {Type}", typeof(T).Name);
+        }
+    }
+
+    /// <summary>
+    /// Dispose the pool and clean up resources
+    /// </summary>
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Protected dispose method
+    /// </summary>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!Disposed && disposing)
+        {
+            Logger?.LogInformation("Disposing ObjectPool with {Active} active objects and {Available} available objects",
+                ActiveObjects.Count, AvailableObjects.Count);
+
+            foreach (var obj in AvailableObjects)
+            {
+                if (obj is IDisposable disposableObj)
+                {
+                    disposableObj.Dispose();
+                }
+            }
+
+            foreach (var obj in ActiveObjects.Keys)
+            {
+                if (obj is IDisposable disposableObj)
+                {
+                    disposableObj.Dispose();
+                }
+            }
+
+            AvailableObjects.Clear();
+            ActiveObjects.Clear();
+
+            _availabilitySignal.Dispose();
+            Disposed = true;
+        }
+    }
+
+    #endregion
+}
+
+

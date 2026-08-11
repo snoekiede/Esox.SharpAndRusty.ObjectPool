@@ -12,9 +12,9 @@ public interface IObjectPool<T>
 
     Result<PoolModel<T>, Error> GetObject();
 
-    void ReturnObject(PoolModel<T> obj);
+    Result<Unit, Error> ReturnObject(PoolModel<T> obj);
 
-    ValueTask ReturnObjectAsync(PoolModel<T> obj);
+    ValueTask<Result<Unit, Error>> ReturnObjectAsync(PoolModel<T> obj);
     
     Task<Result<PoolModel<T>,Error>> GetObjectAsync(TimeSpan timeout=default,CancellationToken cancellationToken=default);
     
