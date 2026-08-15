@@ -67,21 +67,21 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
     /// <param name="initialObjects">The list of initialized objects</param>
     /// <param name="configuration">Pool configuration options</param>
     /// <param name="logger">Logger instance</param>
-    public ObjectPool(List<T> initialObjects, PoolConfiguration<T>? configuration, ILogger<ObjectPool<T>>? logger = null)
+    public ObjectPool(IEnumerable<T> initialObjects, PoolConfiguration<T>? configuration, ILogger<ObjectPool<T>>? logger = null)
     {
         this.Configuration = configuration ?? new PoolConfiguration<T>();
         this.Logger = logger;
         this.ActiveObjects = new ConcurrentDictionary<T, byte>();
         this.AvailableObjects = new ConcurrentStack<T>(initialObjects);
 
-        if (initialObjects.Count > this.Configuration.MaxPoolSize)
+        if (initialObjects.Count() > this.Configuration.MaxPoolSize)
         {
             throw new ArgumentException(string.Format(PoolConstants.Messages.InitialObjectsExceedMaxFormat,
-                initialObjects.Count, this.Configuration.MaxPoolSize));
+                initialObjects.Count(), this.Configuration.MaxPoolSize));
         }
 
         logger?.LogInformation(PoolConstants.Messages.ObjectpoolCreatedWithInitialcountObjectsMaxpoolsizeMaxactive,
-            initialObjects.Count, this.Configuration.MaxPoolSize, this.Configuration.MaxActiveObjects);
+            initialObjects.Count(), this.Configuration.MaxPoolSize, this.Configuration.MaxActiveObjects);
     }
 
     /// <summary>
@@ -89,18 +89,18 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
     /// </summary>
     /// <returns>A PoolModel object</returns>
     /// <exception cref="NoObjectsInPoolException">Raised when no object could be found</exception>
-    public virtual Result<PoolModel<T>,Error> GetObject()
+    public virtual ExtendedResult<PoolModel<T>,Error> GetObject()
     {
         if (Disposed)
         {
-            return Result<PoolModel<T>,Error>.Err(Error.New("ObjectPool has been disposed."));
+            return ExtendedResult<PoolModel<T>,Error>.Err(Error.New("ObjectPool has been disposed."));
         }
 
         Logger?.LogDebug(PoolConstants.Messages.AttemptingToGetObjectFromPoolAvailableCount, AvailableObjects.Count);
 
         if (this.ActiveObjects.Count >= Configuration.MaxActiveObjects)
         {
-            return Result<PoolModel<T>,Error>.Err(Error.New(string.Format(PoolConstants.Messages.MaxActiveLimitFormat,
+            return ExtendedResult<PoolModel<T>,Error>.Err(Error.New(string.Format(PoolConstants.Messages.MaxActiveLimitFormat,
                 Configuration.MaxActiveObjects)));
         }
 
@@ -109,7 +109,7 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
             statistics.IncrementPoolEmpty();
             Logger?.LogWarning(PoolConstants.Messages.PoolEmpty);
 
-            return Result<PoolModel<T>, Error>.Err(Error.New(PoolConstants.Messages.NoObjectsAvailable));
+            return ExtendedResult<PoolModel<T>, Error>.Err(Error.New(PoolConstants.Messages.NoObjectsAvailable));
         }
         this.ActiveObjects.TryAdd(result, 0);
 
@@ -121,7 +121,7 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
         Logger?.LogDebug(PoolConstants.Messages.ObjectRetrievedFromPoolActiveAvailable,
             ActiveObjects.Count, AvailableObjects.Count);
 
-        return Result<PoolModel<T>,Error>.Ok(new PoolModel<T>(result, this));
+        return ExtendedResult<PoolModel<T>,Error>.Ok(new PoolModel<T>(result, this));
     }
 
     
@@ -131,11 +131,11 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
     /// </summary>
     /// <param name="obj">The object to be returned</param>
     /// <exception cref="NoObjectsInPoolException">Raised if the object was not in the active objects list</exception>
-    public Result<Unit,Error> ReturnObject(PoolModel<T> obj)
+    public ExtendedResult<Unit,Error> ReturnObject(PoolModel<T> obj)
     {
         if (Disposed)
         {
-            return Result<Unit, Error>.Err(Error.New("ObjectPool has been disposed."));
+            return ExtendedResult<Unit, Error>.Err(Error.New("ObjectPool has been disposed."));
         }
 
         var unwrapped = obj.Unwrap();
@@ -144,18 +144,18 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
         if (!this.ActiveObjects.TryRemove(unwrapped, out _))
         {
             Logger?.LogWarning(PoolConstants.Messages.ObjectNotInActiveList);
-            return Result<Unit, Error>.Err(Error.New(PoolConstants.Messages.ObjectNotInPool));
+            return ExtendedResult<Unit, Error>.Err(Error.New(PoolConstants.Messages.ObjectNotInPool));
         }
 
         // Validate object if configured
         if (Configuration is { ValidateOnReturn: true, ValidationFunction: not null })
         {
-            Result<T,Error> valid;
+            ExtendedResult<Unit,Error> valid;
             try { valid = Configuration.ValidationFunction(unwrapped); }
             catch (Exception ex) when (ex is not OutOfMemoryException)
             {
                 Logger?.LogError(ex, "Validation function threw; discarding object");
-                valid = Result<T,Error>.Err(Error.New("Validation function threw; discarding object"));
+                valid = ExtendedResult<Unit,Error>.Err(Error.New("Validation function threw; discarding object"));
             }
 
             if (valid.IsFailure)
@@ -164,7 +164,7 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
                 statistics.IncrementReturned();
                 statistics.CurrentActiveObjects = this.ActiveObjects.Count;
                 statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
-                return Result<Unit, Error>.Err(Error.New(PoolConstants.Messages.ValidationFailed));
+                return ExtendedResult<Unit, Error>.Err(Error.New(PoolConstants.Messages.ValidationFailed));
             }
         }
 
@@ -175,7 +175,7 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
             statistics.IncrementReturned();
             statistics.CurrentActiveObjects = this.ActiveObjects.Count;
             statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
-            return Result<Unit, Error>.Err(Error.New(PoolConstants.Messages.PoolAtMaxSize));
+            return ExtendedResult<Unit, Error>.Err(Error.New(PoolConstants.Messages.PoolAtMaxSize));
         }
 
         this.AvailableObjects.Push(unwrapped);
@@ -187,7 +187,7 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
 
         Logger?.LogDebug(PoolConstants.Messages.ObjectReturnedToPoolActiveAvailable,
             ActiveObjects.Count, AvailableObjects.Count);
-        return Result<Unit, Error>.Ok(Unit.Value);
+        return ExtendedResult<Unit, Error>.Ok(Unit.Value);
     }
 
     /// <summary>
@@ -195,9 +195,12 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
     /// </summary>
     /// <param name="obj">The object to be returned</param>
     /// <exception cref="NoObjectsInPoolException">Raised if the object was not in the active objects list</exception>
-    public async ValueTask<Result<Unit, Error>> ReturnObjectAsync(PoolModel<T> obj)
+    public async ValueTask<ExtendedResult<Unit, Error>> ReturnObjectAsync(PoolModel<T> obj)
     {
-        if (Disposed) return Result<Unit, Error>.Err(Error.New("Object is disposed"));
+        if (Disposed)
+        {
+            return ExtendedResult<Unit, Error>.Err(Error.New("Object is disposed"));
+        }
 
         var unwrapped = obj.Unwrap();
 
@@ -205,13 +208,13 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
         if (!this.ActiveObjects.TryRemove(unwrapped, out _))
         {
             Logger?.LogWarning(PoolConstants.Messages.ObjectNotInActiveList);
-            return Result<Unit, Error>.Err(Error.New(PoolConstants.Messages.ObjectNotInPool));
+            return ExtendedResult<Unit, Error>.Err(Error.New(PoolConstants.Messages.ObjectNotInPool));
         }
 
         // Async validation takes precedence
         if (Configuration is { ValidateOnReturn: true, AsyncValidationFunction: not null })
         {
-            Result<Unit, Error> isValid;
+            ExtendedResult<Unit, Error> isValid;
             try
             {
                 isValid = await Configuration.AsyncValidationFunction(unwrapped).ConfigureAwait(false); 
@@ -219,7 +222,7 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
             catch (Exception ex) when (ex is not OutOfMemoryException)
             {
                 Logger?.LogError(ex, "Async validation function threw; discarding object");
-                isValid = Result<Unit, Error>.Err(Error.New("Async validation function threw; discarding object"));
+                isValid = ExtendedResult<Unit, Error>.Err(Error.New("Async validation function threw; discarding object"));
             }
 
             if (isValid.IsFailure)
@@ -234,18 +237,18 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
                 {
                     await DisposeObjectAsync(unwrapped).ConfigureAwait(false);
                 }
-                return Result<Unit, Error>.Err(Error.New(PoolConstants.Messages.ValidationFailed));
+                return ExtendedResult<Unit, Error>.Err(Error.New(PoolConstants.Messages.ValidationFailed));
             }
         }
         // Fall back to sync validation if no async validation
         else if (Configuration is { ValidateOnReturn: true, ValidationFunction: not null })
         {
-            Result<T, Error> valid;
+            ExtendedResult<Unit, Error> valid;
             try { valid = Configuration.ValidationFunction(unwrapped); }
             catch (Exception ex) when (ex is not OutOfMemoryException)
             {
                 Logger?.LogError(ex, "Validation function threw; discarding object");
-                valid = Result<T, Error>.Err(Error.New("Validation function threw; discarding object"));
+                valid = ExtendedResult<Unit, Error>.Err(Error.New("Validation function threw; discarding object"));
             }
 
             if (valid.IsFailure)
@@ -254,7 +257,7 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
                 statistics.IncrementReturned();
                 statistics.CurrentActiveObjects = this.ActiveObjects.Count;
                 statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
-                return Result<Unit, Error>.Err(Error.New(PoolConstants.Messages.ValidationFailed));
+                return ExtendedResult<Unit, Error>.Err(Error.New(PoolConstants.Messages.ValidationFailed));
             }
         }
 
@@ -265,7 +268,7 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
             statistics.IncrementReturned();
             statistics.CurrentActiveObjects = this.ActiveObjects.Count;
             statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
-            return Result<Unit, Error>.Err(Error.New(PoolConstants.Messages.PoolAtMaxSize));
+            return ExtendedResult<Unit, Error>.Err(Error.New(PoolConstants.Messages.PoolAtMaxSize));
         }
 
         this.AvailableObjects.Push(unwrapped);
@@ -277,7 +280,7 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
 
         Logger?.LogDebug(PoolConstants.Messages.ObjectReturnedToPoolActiveAvailable,
             ActiveObjects.Count, AvailableObjects.Count);
-        return Result<Unit, Error>.Ok(Unit.Value);
+        return ExtendedResult<Unit, Error>.Ok(Unit.Value);
     }
 
     /// <summary>
@@ -383,11 +386,11 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
     /// <param name="timeout">Maximum time to wait for an object</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>A poolmodel</returns>
-    public async Task<Result<PoolModel<T>, Error>> GetObjectAsync(TimeSpan timeout = default, CancellationToken cancellationToken = default)
+    public async Task<ExtendedResult<PoolModel<T>, Error>> GetObjectAsync(TimeSpan timeout = default, CancellationToken cancellationToken = default)
     {
         if (Disposed)
         {
-            return Result<PoolModel<T>, Error>.Err(Error.New("ObjectPool has been disposed"));
+            return ExtendedResult<PoolModel<T>, Error>.Err(Error.New("ObjectPool has been disposed"));
         }
 
         var effectiveTimeout = timeout == TimeSpan.Zero ? Configuration.DefaultTimeout : timeout;

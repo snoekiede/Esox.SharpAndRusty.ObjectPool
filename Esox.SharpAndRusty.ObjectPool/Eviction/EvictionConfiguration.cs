@@ -11,7 +11,7 @@ public enum EvictionPolicy
 
     TimeToLive = 1,
 
-    IdleTimeOut = 2,
+    IdleTimeout = 2,
 
     Combined = 3
 }
@@ -30,7 +30,15 @@ public class EvictionConfiguration
 
     public int MaxEvictionsPerRun { get; set; } = int.MaxValue;
 
+    /// <summary>
+    /// Optional custom eviction predicate
+    /// </summary>
+    public Func<object, ObjectMetadata, bool>? CustomEvictionPredicate { get; set; }
 
+    /// <summary>
+    /// Whether to dispose evicted objects if they implement IDisposable
+    /// </summary>
+    public bool DisposeEvictedObjects { get; set; } = true;
 }
 
 public class ObjectMetadata

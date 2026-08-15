@@ -18,7 +18,7 @@ public class PoolConfiguration<T>
 
     public bool ValidateOnReturn { get; set; } = false;
 
-    public Func<T,Result<T, Error>>? ValidationFunction { get; set; }
+    public Func<T,ExtendedResult<Unit, Error>>? ValidationFunction { get; set; }
 
     public bool EnableDetailedStatistics { get; set; } = true;
 
@@ -34,7 +34,7 @@ public class PoolConfiguration<T>
     
     public object? PrioritySelector { get; set; }
     
-    public Func<T,ValueTask<Result<Unit,Error>>>? AsyncValidationFunction { get; set; }
+    public Func<T,ValueTask<ExtendedResult<Unit,Error>>>? AsyncValidationFunction { get; set; }
 
     public bool UseAsyncDisposal { get; set; } = true;
 }

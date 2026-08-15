@@ -10,13 +10,13 @@ public interface IObjectPool<T>
 {
     int AvailableObjectCount { get; }
 
-    Result<PoolModel<T>, Error> GetObject();
+    ExtendedResult<PoolModel<T>, Error> GetObject();
 
-    Result<Unit, Error> ReturnObject(PoolModel<T> obj);
+    ExtendedResult<Unit, Error> ReturnObject(PoolModel<T> obj);
 
-    ValueTask<Result<Unit, Error>> ReturnObjectAsync(PoolModel<T> obj);
+    ValueTask<ExtendedResult<Unit, Error>> ReturnObjectAsync(PoolModel<T> obj);
     
-    Task<Result<PoolModel<T>,Error>> GetObjectAsync(TimeSpan timeout=default,CancellationToken cancellationToken=default);
+    Task<ExtendedResult<PoolModel<T>,Error>> GetObjectAsync(TimeSpan timeout=default,CancellationToken cancellationToken=default);
     
 }
 
