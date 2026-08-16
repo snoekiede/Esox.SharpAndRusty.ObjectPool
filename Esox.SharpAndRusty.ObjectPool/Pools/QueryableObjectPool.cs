@@ -552,9 +552,12 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
     /// <param name="timeout">Maximum time to wait for an object</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>A poolmodel</returns>
-    public async Task<PoolModel<T>> GetObjectAsync(Func<T, bool> query, TimeSpan timeout = default, CancellationToken cancellationToken = default)
+    public async Task<ExtendedResult<PoolModel<T>,Error>> GetObjectAsync(Func<T, bool> query, TimeSpan timeout = default, CancellationToken cancellationToken = default)
     {
-        if (Disposed) throw new ObjectDisposedException(nameof(QueryableObjectPool<T>));
+        if (Disposed)
+        {
+            return Error.New("Already disposed");
+        }
 
         var effectiveTimeout = timeout == TimeSpan.Zero ? Configuration.DefaultTimeout : timeout;
 
@@ -586,13 +589,13 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
                     cancellationToken.ThrowIfCancellationRequested();
                 }
                 Logger?.LogWarning(PoolConstants.Messages.TimeoutWaitingForObjectMatchingQueryFromPoolAfter, effectiveTimeout);
-                throw new TimeoutException(string.Format(PoolConstants.Messages.TimeoutWaitingFormat, effectiveTimeout));
+                return Error.New(string.Format(PoolConstants.Messages.TimeoutWaitingFormat, effectiveTimeout));
             }
 
             if (!signalled)
             {
                 Logger?.LogWarning(PoolConstants.Messages.TimeoutWaitingForObjectMatchingQueryFromPoolAfter, effectiveTimeout);
-                throw new TimeoutException(string.Format(PoolConstants.Messages.TimeoutWaitingFormat, effectiveTimeout));
+                return Error.New(string.Format(PoolConstants.Messages.TimeoutWaitingFormat, effectiveTimeout));
             }
 
             cancellationToken.ThrowIfCancellationRequested();
