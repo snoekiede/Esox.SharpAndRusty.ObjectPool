@@ -41,6 +41,8 @@ public static class ServiceCollectionExtensions
             var builder = new ObjectPoolBuilder<T>();
             configure(builder);
 
+            services.TryAddSingleton(builder);
+
             services.TryAddSingleton<IObjectPool<T>>(sp =>
             {
                 var logger = sp.GetService<ILogger<ObjectPool<T>>>();
@@ -112,6 +114,8 @@ public static class ServiceCollectionExtensions
 
             var builder = new ObjectPoolBuilder<T>();
             configure(builder);
+
+            services.TryAddSingleton(builder);
 
             services.TryAddSingleton<IQueryableObjectPool<T>>(sp =>
             {

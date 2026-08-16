@@ -311,8 +311,6 @@ public class DynamicObjectPool<T> : ObjectPool<T>, IObjectPoolWarmer<T> where T 
             _lifecycleHookManager?.ExecuteOnAcquire(result);
 
             statistics.IncrementRetrieved();
-
-            statistics.IncrementRetrieved();
             statistics.CurrentActiveObjects = this.ActiveObjects.Count;
             statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
             statistics.UpdatePeakIfHigher(statistics.CurrentActiveObjects);

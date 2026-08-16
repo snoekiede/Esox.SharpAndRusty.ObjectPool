@@ -6,7 +6,15 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-
+	<PropertyGroup>
+		<PackageId>Esox.SharpAndRusty.ObjectPool</PackageId>
+		<Version>1.0.0</Version>
+		<Authors>Iede Snoek</Authors>
+		<Description>A thread-safe, Result-based generic object pool for .NET 8/9/10 with circuit breaker, eviction, lifecycle hooks, and DI support.</Description>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<RepositoryUrl>https://github.com/snoekiede/Esox.SharpAndRusty.ObjectPool</RepositoryUrl>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+	</PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Esox.SharpAndRusty" Version="1.6.4" />
     <PackageReference Include="Esox.SharpAndRusty.Analyzers" Version="1.0.0">
