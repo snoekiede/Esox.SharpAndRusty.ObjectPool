@@ -231,7 +231,7 @@ public class DynamicObjectPool<T> : ObjectPool<T>, IObjectPoolWarmer<T> where T 
     {
         if (Disposed)
         {
-            return ExtendedResult<PoolModel<T>, Error>.Err("Object has been disposed");
+            return Error.New("Object has been disposed");
         }
 
         if (_circuitBreaker is not null)
@@ -246,8 +246,8 @@ public class DynamicObjectPool<T> : ObjectPool<T>, IObjectPoolWarmer<T> where T 
     {
         if (this.ActiveObjects.Count >= Configuration.MaxActiveObjects)
         {
-            return ExtendedResult<PoolModel<T>, Error>.Err(Error.New(String.Format(PoolConstants.Messages.MaxActiveLimitFormat,
-                Configuration.MaxActiveObjects)));
+            return Error.New(String.Format(PoolConstants.Messages.MaxActiveLimitFormat,
+                Configuration.MaxActiveObjects));
         }
 
         T? result = null;
@@ -304,7 +304,7 @@ public class DynamicObjectPool<T> : ObjectPool<T>, IObjectPoolWarmer<T> where T 
         {
             statistics.IncrementPoolEmpty();
             Logger?.LogWarning(PoolConstants.Messages.CannotCreateObject);
-            return ExtendedResult<PoolModel<T>, Error>.Err(Error.New(PoolConstants.Messages.CannotCreateObject));
+            return Error.New(PoolConstants.Messages.CannotCreateObject);
         }
 
         T? newObject;
@@ -316,12 +316,12 @@ public class DynamicObjectPool<T> : ObjectPool<T>, IObjectPoolWarmer<T> where T 
         catch (Exception ex)
         {
             Logger?.LogError(ex, "Error creating new object");
-            return ExtendedResult<PoolModel<T>, Error>.Err(Error.New(PoolConstants.Messages.CannotCreateObject));
+            return Error.New(PoolConstants.Messages.CannotCreateObject);
         }
 
         if (newObject is null)
         {
-            return ExtendedResult<PoolModel<T>, Error>.Err(Error.New(PoolConstants.Messages.CannotCreateObject));
+            return Error.New(PoolConstants.Messages.CannotCreateObject);
         }
 
         _lifecycleHookManager?.ExecuteOnCreate(newObject);
@@ -353,7 +353,7 @@ public class DynamicObjectPool<T> : ObjectPool<T>, IObjectPoolWarmer<T> where T 
     {
         if (Disposed)
         {
-            return ExtendedResult<Unit, Error>.Err(Error.New("Object has been disposed"));
+            return Error.New("Object has been disposed");
         }
 
         var unwrapped = obj.Unwrap();
@@ -361,7 +361,7 @@ public class DynamicObjectPool<T> : ObjectPool<T>, IObjectPoolWarmer<T> where T 
         if (!this.ActiveObjects.TryRemove(unwrapped, out _))
         {
             Logger?.LogWarning(PoolConstants.Messages.ObjectNotInActiveList);
-            return ExtendedResult<Unit, Error>.Err(Error.New(PoolConstants.Messages.ObjectNotInPool));
+            return Error.New(PoolConstants.Messages.ObjectNotInPool);
         }
 
         _lifecycleHookManager?.ExecuteOnReturn(unwrapped);
@@ -387,7 +387,7 @@ public class DynamicObjectPool<T> : ObjectPool<T>, IObjectPoolWarmer<T> where T 
                 statistics.IncrementReturned();
                 statistics.CurrentActiveObjects = this.ActiveObjects.Count;
                 statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
-                return ExtendedResult<Unit, Error>.Err(Error.New(PoolConstants.Messages.ValidationFailed));
+                return Error.New(PoolConstants.Messages.ValidationFailed);
             }
         }
 
@@ -398,7 +398,7 @@ public class DynamicObjectPool<T> : ObjectPool<T>, IObjectPoolWarmer<T> where T 
             statistics.IncrementReturned();
             statistics.CurrentActiveObjects = this.ActiveObjects.Count;
             statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
-            return ExtendedResult<Unit, Error>.Err(Error.New(PoolConstants.Messages.PoolAtMaxSize));
+            return Error.New(PoolConstants.Messages.PoolAtMaxSize);
         }
 
         // Record return for eviction tracking
@@ -414,7 +414,7 @@ public class DynamicObjectPool<T> : ObjectPool<T>, IObjectPoolWarmer<T> where T 
         Logger?.LogDebug(PoolConstants.Messages.ObjectReturnedToPoolActiveAvailable,
             ActiveObjects.Count, AvailableObjects.Count);
         
-        return ExtendedResult<Unit, Error>.Ok(Unit.Value);
+        return Unit.Value;
 
     }
 
@@ -467,7 +467,7 @@ public class DynamicObjectPool<T> : ObjectPool<T>, IObjectPoolWarmer<T> where T 
         {
             Logger?.LogWarning("Cannot warm up pool: no factory method provided");
             _warmupStatus.Errors.Add("No factory method available");
-            return ExtendedResult<Unit,Error>.Err(Error.New("No factory method available"));
+            return Error.New("No factory method available");
         }
 
         var stopwatch = Stopwatch.StartNew();
@@ -480,7 +480,7 @@ public class DynamicObjectPool<T> : ObjectPool<T>, IObjectPoolWarmer<T> where T 
             _warmupStatus.IsWarmedUp = true;
             _warmupStatus.ObjectsCreated = 0;
             _warmupStatus.TargetSize = targetSize;
-            return ExtendedResult<Unit,Error>.Err(Error.New("Pool already at target size"));
+            return Error.New("Pool already at target size");
         }
 
         _warmupStatus = new WarmupStatus
@@ -536,13 +536,13 @@ public class DynamicObjectPool<T> : ObjectPool<T>, IObjectPoolWarmer<T> where T 
         catch (OperationCanceledException)
         {
             Logger?.LogInformation("Pool warm-up cancelled after creating {Created} objects", _warmupStatus.ObjectsCreated);
-            return ExtendedResult<Unit,Error>.Err(Error.New("Pool warm-up cancelled"));
+            return Error.New("Pool warm-up cancelled");
         }
         catch (CircuitBreakerOpenException ex)
         {
             Logger?.LogWarning("Pool warm-up interrupted by circuit breaker: {Message}", ex.Message);
             _warmupStatus.Errors.Add($"Circuit breaker open: {ex.Message}");
-            return ExtendedResult<Unit,Error>.Err(Error.New($"Circuit breaker open: {ex.Message}"));
+            return Error.New($"Circuit breaker open: {ex.Message}");
         }
 
         stopwatch.Stop();
@@ -555,7 +555,7 @@ public class DynamicObjectPool<T> : ObjectPool<T>, IObjectPoolWarmer<T> where T 
             _warmupStatus.ObjectsCreated,
             targetSize,
             stopwatch.ElapsedMilliseconds);
-        return ExtendedResult<Unit,Error>.Ok(Unit.Value);
+        return Unit.Value;
     }
 
     /// <summary>
@@ -565,7 +565,7 @@ public class DynamicObjectPool<T> : ObjectPool<T>, IObjectPoolWarmer<T> where T 
     {
         if (targetPercentage < 0 || targetPercentage > 100)
         {
-            return ExtendedResult<Unit,Error>.Err(Error.New("Target percentage must be between 0 and 100"));
+            return Error.New("Target percentage must be between 0 and 100");
         }
 
         var maxSize = Configuration.MaxPoolSize == int.MaxValue

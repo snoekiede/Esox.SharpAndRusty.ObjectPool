@@ -106,7 +106,7 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
     {
         if (Disposed)
         {
-            return ExtendedResult<PoolModel<T>,Error>.Err(Error.New("Object has been disposed"));
+            return Error.New("Object has been disposed");
         }
 
         Logger?.LogDebug(PoolConstants.Messages.AttemptingToGetObjectFromPoolAvailableCount, AvailableObjects.Count);
@@ -114,15 +114,15 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
         if (this.ActiveObjects.Count >= Configuration.MaxActiveObjects)
         {
             Logger?.LogWarning(PoolConstants.Messages.MaxActiveLimitFormat, Configuration.MaxActiveObjects);
-            return ExtendedResult<PoolModel<T>,Error>.Err(Error.New(string.Format(PoolConstants.Messages.MaxActiveLimitFormat,
-                Configuration.MaxActiveObjects)));
+            return Error.New(string.Format(PoolConstants.Messages.MaxActiveLimitFormat,
+                Configuration.MaxActiveObjects));
         }
 
         if (!this.AvailableObjects.TryPop(out var result))
         {
             statistics.IncrementPoolEmpty();
             Logger?.LogWarning(PoolConstants.Messages.PoolEmpty);
-            return ExtendedResult<PoolModel<T>,Error>.Err(Error.New(PoolConstants.Messages.NoObjectsAvailable));
+            return Error.New(PoolConstants.Messages.NoObjectsAvailable);
         }
 
         this.ActiveObjects.TryAdd(result, 0);
@@ -148,15 +148,15 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
         if (Disposed)
         {
             poolModel = null;
-            return ExtendedResult<Unit,Error>.Err(Error.New("Object has been disposed"));
+            return Error.New("Object has been disposed");
         }
 
         if (this.ActiveObjects.Count >= Configuration.MaxActiveObjects)
         {
             Logger?.LogDebug(PoolConstants.Messages.CannotGetObjectActiveObjectsLimitMaxactiveReached, Configuration.MaxActiveObjects);
             poolModel = null;
-            return ExtendedResult<Unit,Error>.Err(Error.New(string.Format(PoolConstants.Messages.MaxActiveLimitFormat,
-                Configuration.MaxActiveObjects)));
+            return Error.New(string.Format(PoolConstants.Messages.MaxActiveLimitFormat,
+                Configuration.MaxActiveObjects));
         }
 
         if (!this.AvailableObjects.TryPop(out var result))
@@ -164,7 +164,7 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
             statistics.IncrementPoolEmpty();
             Logger?.LogDebug(PoolConstants.Messages.NoAvailableObjects);
             poolModel = null;
-            return ExtendedResult<Unit,Error>.Err(Error.New(PoolConstants.Messages.NoObjectsAvailable));
+            return Error.New(PoolConstants.Messages.NoObjectsAvailable);
         }
 
         this.ActiveObjects.TryAdd(result, 0);
@@ -177,7 +177,7 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
         poolModel = new PoolModel<T>(result, this);
         Logger?.LogDebug(PoolConstants.Messages.ObjectRetrievedSuccessfullyActiveAvailable,
             ActiveObjects.Count, AvailableObjects.Count);
-        return ExtendedResult<Unit,Error>.Ok(Unit.Value);
+        return Unit.Value;
     }
     /// <summary>
     /// Returns an object to the pool. If the object is not in the pool, an exception is thrown.
@@ -188,7 +188,7 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
     {
         if (Disposed)
         {
-            return ExtendedResult<Unit, Error>.Err(Error.New("Object has been disposed"));
+            return Error.New("Object has been disposed");
         }
 
         var unwrapped = obj.Unwrap();
@@ -197,7 +197,7 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
         if (!this.ActiveObjects.TryRemove(unwrapped, out _))
         {
             Logger?.LogWarning(PoolConstants.Messages.ObjectNotInActiveList);
-            return ExtendedResult<Unit, Error>.Err(Error.New(PoolConstants.Messages.ObjectNotInPool));
+            return Error.New(PoolConstants.Messages.ObjectNotInPool);
         }
 
         // Validate object if configured
@@ -217,7 +217,7 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
                 statistics.IncrementReturned();
                 statistics.CurrentActiveObjects = this.ActiveObjects.Count;
                 statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
-                return ExtendedResult<Unit, Error>.Err(Error.New(PoolConstants.Messages.ValidationFailed));
+                return Error.New(PoolConstants.Messages.ValidationFailed);
             }
         }
 
@@ -228,7 +228,7 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
             statistics.IncrementReturned();
             statistics.CurrentActiveObjects = this.ActiveObjects.Count;
             statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
-            return ExtendedResult<Unit, Error>.Err(Error.New(PoolConstants.Messages.PoolAtMaxSize));
+            return Error.New(PoolConstants.Messages.PoolAtMaxSize);
         }
 
         this.AvailableObjects.Push(unwrapped);
@@ -252,7 +252,7 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
     {
         if (Disposed)
         {
-            return ExtendedResult<Unit, Error>.Err(Error.New("Object has been disposed"));
+            return Error.New("Object has been disposed");
         }
 
         var unwrapped = obj.Unwrap();
@@ -261,7 +261,7 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
         if (!this.ActiveObjects.TryRemove(unwrapped, out _))
         {
             Logger?.LogWarning(PoolConstants.Messages.ObjectNotInActiveList);
-            return ExtendedResult<Unit, Error>.Err(Error.New(PoolConstants.Messages.ObjectNotInPool));
+            return Error.New(PoolConstants.Messages.ObjectNotInPool);
         }
 
         // Async validation takes precedence
@@ -281,7 +281,7 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
                 statistics.IncrementReturned();
                 statistics.CurrentActiveObjects = this.ActiveObjects.Count;
                 statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
-                return ExtendedResult<Unit, Error>.Err(Error.New(PoolConstants.Messages.ValidationFailed));
+                return Error.New(PoolConstants.Messages.ValidationFailed);
             }
         }
         // Fall back to sync validation if no async validation
@@ -301,7 +301,7 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
                 statistics.IncrementReturned();
                 statistics.CurrentActiveObjects = this.ActiveObjects.Count;
                 statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
-                return ExtendedResult<Unit, Error>.Err(Error.New(PoolConstants.Messages.ValidationFailed));
+                return Error.New(PoolConstants.Messages.ValidationFailed);
             }
         }
 
@@ -312,7 +312,7 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
             statistics.IncrementReturned();
             statistics.CurrentActiveObjects = this.ActiveObjects.Count;
             statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
-            return ExtendedResult<Unit, Error>.Err(Error.New(PoolConstants.Messages.PoolAtMaxSize));
+            return Error.New(PoolConstants.Messages.PoolAtMaxSize);
         }
 
         this.AvailableObjects.Push(unwrapped);
@@ -324,7 +324,7 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
 
         Logger?.LogDebug(PoolConstants.Messages.ObjectReturnedToPoolActiveAvailable,
             ActiveObjects.Count, AvailableObjects.Count);
-        return ExtendedResult<Unit, Error>.Ok(Unit.Value);
+        return Unit.Value;
     }
 
     /// <summary>
@@ -337,7 +337,7 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
     {
         if (Disposed)
         {
-            return ExtendedResult<PoolModel<T>, Error>.Err(Error.New($"ObjectDisposedException: {nameof(QueryableObjectPool<>)}"));
+            return Error.New($"ObjectDisposedException: {nameof(QueryableObjectPool<>)}");
         }
 
         Logger?.LogDebug(PoolConstants.Messages.AttemptingToGetObjectFromPoolUsingQueryAvailableCount, AvailableObjects.Count);
@@ -345,8 +345,8 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
         if (this.ActiveObjects.Count >= Configuration.MaxActiveObjects)
         {
             Logger?.LogWarning(PoolConstants.Messages.MaxActiveLimitFormat, Configuration.MaxActiveObjects);
-            return ExtendedResult<PoolModel<T>, Error>.Err(Error.New(string.Format(PoolConstants.Messages.MaxActiveLimitFormat,
-                Configuration.MaxActiveObjects)));
+            return Error.New(string.Format(PoolConstants.Messages.MaxActiveLimitFormat,
+                Configuration.MaxActiveObjects));
         }
 
         // Create a snapshot of available objects

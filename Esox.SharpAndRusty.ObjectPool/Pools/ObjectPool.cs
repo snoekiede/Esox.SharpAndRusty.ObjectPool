@@ -93,15 +93,15 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
     {
         if (Disposed)
         {
-            return ExtendedResult<PoolModel<T>,Error>.Err(Error.New("ObjectPool has been disposed."));
+            return Error.New("ObjectPool has been disposed.");
         }
 
         Logger?.LogDebug(PoolConstants.Messages.AttemptingToGetObjectFromPoolAvailableCount, AvailableObjects.Count);
 
         if (this.ActiveObjects.Count >= Configuration.MaxActiveObjects)
         {
-            return ExtendedResult<PoolModel<T>,Error>.Err(Error.New(string.Format(PoolConstants.Messages.MaxActiveLimitFormat,
-                Configuration.MaxActiveObjects)));
+            return Error.New(string.Format(PoolConstants.Messages.MaxActiveLimitFormat,
+                Configuration.MaxActiveObjects));
         }
 
         if (!this.AvailableObjects.TryPop(out var result))
@@ -109,7 +109,7 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
             statistics.IncrementPoolEmpty();
             Logger?.LogWarning(PoolConstants.Messages.PoolEmpty);
 
-            return ExtendedResult<PoolModel<T>, Error>.Err(Error.New(PoolConstants.Messages.NoObjectsAvailable));
+            return Error.New(PoolConstants.Messages.NoObjectsAvailable);
         }
         this.ActiveObjects.TryAdd(result, 0);
 
@@ -121,7 +121,7 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
         Logger?.LogDebug(PoolConstants.Messages.ObjectRetrievedFromPoolActiveAvailable,
             ActiveObjects.Count, AvailableObjects.Count);
 
-        return ExtendedResult<PoolModel<T>,Error>.Ok(new PoolModel<T>(result, this));
+        return new PoolModel<T>(result, this);
     }
 
     
@@ -135,7 +135,7 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
     {
         if (Disposed)
         {
-            return ExtendedResult<Unit, Error>.Err(Error.New("ObjectPool has been disposed."));
+            return Error.New("ObjectPool has been disposed.");
         }
 
         var unwrapped = obj.Unwrap();
@@ -144,7 +144,7 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
         if (!this.ActiveObjects.TryRemove(unwrapped, out _))
         {
             Logger?.LogWarning(PoolConstants.Messages.ObjectNotInActiveList);
-            return ExtendedResult<Unit, Error>.Err(Error.New(PoolConstants.Messages.ObjectNotInPool));
+            return Error.New(PoolConstants.Messages.ObjectNotInPool);
         }
 
         // Validate object if configured
@@ -164,7 +164,7 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
                 statistics.IncrementReturned();
                 statistics.CurrentActiveObjects = this.ActiveObjects.Count;
                 statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
-                return ExtendedResult<Unit, Error>.Err(Error.New(PoolConstants.Messages.ValidationFailed));
+                return Error.New(PoolConstants.Messages.ValidationFailed);
             }
         }
 
@@ -175,7 +175,7 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
             statistics.IncrementReturned();
             statistics.CurrentActiveObjects = this.ActiveObjects.Count;
             statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
-            return ExtendedResult<Unit, Error>.Err(Error.New(PoolConstants.Messages.PoolAtMaxSize));
+            return Error.New(PoolConstants.Messages.PoolAtMaxSize);
         }
 
         this.AvailableObjects.Push(unwrapped);
@@ -187,7 +187,7 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
 
         Logger?.LogDebug(PoolConstants.Messages.ObjectReturnedToPoolActiveAvailable,
             ActiveObjects.Count, AvailableObjects.Count);
-        return ExtendedResult<Unit, Error>.Ok(Unit.Value);
+        return Unit.Value;
     }
 
     /// <summary>
@@ -199,7 +199,7 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
     {
         if (Disposed)
         {
-            return ExtendedResult<Unit, Error>.Err(Error.New("Object is disposed"));
+            return Error.New("Object is disposed");
         }
 
         var unwrapped = obj.Unwrap();
@@ -208,7 +208,7 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
         if (!this.ActiveObjects.TryRemove(unwrapped, out _))
         {
             Logger?.LogWarning(PoolConstants.Messages.ObjectNotInActiveList);
-            return ExtendedResult<Unit, Error>.Err(Error.New(PoolConstants.Messages.ObjectNotInPool));
+            return Error.New(PoolConstants.Messages.ObjectNotInPool);
         }
 
         // Async validation takes precedence
@@ -237,7 +237,7 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
                 {
                     await DisposeObjectAsync(unwrapped).ConfigureAwait(false);
                 }
-                return ExtendedResult<Unit, Error>.Err(Error.New(PoolConstants.Messages.ValidationFailed));
+                return Error.New(PoolConstants.Messages.ValidationFailed);
             }
         }
         // Fall back to sync validation if no async validation
@@ -257,7 +257,7 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
                 statistics.IncrementReturned();
                 statistics.CurrentActiveObjects = this.ActiveObjects.Count;
                 statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
-                return ExtendedResult<Unit, Error>.Err(Error.New(PoolConstants.Messages.ValidationFailed));
+                return Error.New(PoolConstants.Messages.ValidationFailed);
             }
         }
 
@@ -268,7 +268,7 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
             statistics.IncrementReturned();
             statistics.CurrentActiveObjects = this.ActiveObjects.Count;
             statistics.CurrentAvailableObjects = this.AvailableObjects.Count;
-            return ExtendedResult<Unit, Error>.Err(Error.New(PoolConstants.Messages.PoolAtMaxSize));
+            return Error.New(PoolConstants.Messages.PoolAtMaxSize);
         }
 
         this.AvailableObjects.Push(unwrapped);
@@ -280,7 +280,7 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
 
         Logger?.LogDebug(PoolConstants.Messages.ObjectReturnedToPoolActiveAvailable,
             ActiveObjects.Count, AvailableObjects.Count);
-        return ExtendedResult<Unit, Error>.Ok(Unit.Value);
+        return Unit.Value;
     }
 
     /// <summary>
@@ -425,13 +425,13 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
                 }
                 // Inner timeout CTS fired.
                 Logger?.LogWarning(PoolConstants.Messages.TimeoutWaitingFormat, effectiveTimeout);
-                throw new TimeoutException(string.Format(PoolConstants.Messages.TimeoutWaitingFormat, effectiveTimeout));
+                return Error.New(String.Format(PoolConstants.Messages.TimeoutWaitingFormat, effectiveTimeout));
             }
 
             if (!signalled)
             {
                 Logger?.LogWarning(PoolConstants.Messages.TimeoutWaitingFormat, effectiveTimeout);
-                throw new TimeoutException(string.Format(PoolConstants.Messages.TimeoutWaitingFormat, effectiveTimeout));
+                return Error.New(String.Format(PoolConstants.Messages.TimeoutWaitingFormat, effectiveTimeout));
             }
 
             cancellationToken.ThrowIfCancellationRequested();

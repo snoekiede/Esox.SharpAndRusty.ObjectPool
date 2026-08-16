@@ -366,7 +366,7 @@ public class LifecycleHookManager<T> where T : notnull
     /// </summary>
     public LifecycleHookStatistics GetStatistics() => _statistics;
 
-    private Result<Unit,Error> ExecuteHook(Action action, string hookName)
+    private ExtendedResult<Unit,Error> ExecuteHook(Action action, string hookName)
     {
         var startTime = DateTime.UtcNow;
         try
@@ -375,6 +375,7 @@ public class LifecycleHookManager<T> where T : notnull
 
             var duration = DateTime.UtcNow - startTime;
             UpdateExecutionTime(duration);
+            return Unit.Value;
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
@@ -384,9 +385,11 @@ public class LifecycleHookManager<T> where T : notnull
 
             if (!_continueOnError)
             {
-                throw;
+                return Error.FromException(ex);
             }
         }
+
+        return Unit.Value;
     }
 
     private async Task ExecuteHookAsync(Func<Task> action, string hookName)
