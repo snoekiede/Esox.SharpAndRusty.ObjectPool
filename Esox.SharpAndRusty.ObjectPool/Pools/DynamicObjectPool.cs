@@ -236,10 +236,30 @@ public class DynamicObjectPool<T> : ObjectPool<T>, IObjectPoolWarmer<T> where T 
 
         if (_circuitBreaker is not null)
         {
-            return _circuitBreaker.Execute(GetObjectInternal);
+            try
+            {
+                return _circuitBreaker.Execute(GetObjectInternal);
+            }
+            catch (CircuitBreakerOpenException)
+            {
+                return Error.New("Circuit breaker is open");
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogError(ex, "Error creating new object");
+                return Error.New(PoolConstants.Messages.CannotCreateObject);
+            }
         }
 
-        return GetObjectInternal();
+        try
+        {
+            return GetObjectInternal();
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Error creating new object");
+            return Error.New(PoolConstants.Messages.CannotCreateObject);
+        }
     }
 
     private ExtendedResult<PoolModel<T>, Error> GetObjectInternal()
@@ -307,17 +327,7 @@ public class DynamicObjectPool<T> : ObjectPool<T>, IObjectPoolWarmer<T> where T 
             return Error.New(PoolConstants.Messages.CannotCreateObject);
         }
 
-        T? newObject;
-
-        try
-        {
-            newObject = this._factory.Invoke();
-        }
-        catch (Exception ex)
-        {
-            Logger?.LogError(ex, "Error creating new object");
-            return Error.New(PoolConstants.Messages.CannotCreateObject);
-        }
+        T? newObject = this._factory.Invoke();
 
         if (newObject is null)
         {
@@ -346,6 +356,14 @@ public class DynamicObjectPool<T> : ObjectPool<T>, IObjectPoolWarmer<T> where T 
         return new PoolModel<T>(newObject, this);
     }
 
+
+    /// <summary>
+    /// Gets lifecycle hook statistics
+    /// </summary>
+    public LifecycleHookStatistics? GetLifecycleHookStatistics()
+    {
+        return _lifecycleHookManager?.GetStatistics();
+    }
     /// <summary>
     /// Returns an object to the pool
     /// </summary>

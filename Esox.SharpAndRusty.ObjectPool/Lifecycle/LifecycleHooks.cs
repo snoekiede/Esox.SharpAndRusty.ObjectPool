@@ -385,7 +385,7 @@ public class LifecycleHookManager<T> where T : notnull
 
             if (!_continueOnError)
             {
-                return Error.FromException(ex);
+                throw;
             }
         }
 
