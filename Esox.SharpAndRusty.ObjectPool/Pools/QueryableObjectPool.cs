@@ -337,7 +337,7 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
     {
         if (Disposed)
         {
-            return Error.New($"ObjectDisposedException: {nameof(QueryableObjectPool<>)}");
+            return Error.New($"ObjectDisposedException: {nameof(QueryableObjectPool<T>)}");
         }
 
         Logger?.LogDebug(PoolConstants.Messages.AttemptingToGetObjectFromPoolUsingQueryAvailableCount, AvailableObjects.Count);
@@ -554,7 +554,7 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
     /// <returns>A poolmodel</returns>
     public async Task<PoolModel<T>> GetObjectAsync(Func<T, bool> query, TimeSpan timeout = default, CancellationToken cancellationToken = default)
     {
-        if (Disposed) throw new ObjectDisposedException(nameof(QueryableObjectPool<>));
+        if (Disposed) throw new ObjectDisposedException(nameof(QueryableObjectPool<T>));
 
         var effectiveTimeout = timeout == TimeSpan.Zero ? Configuration.DefaultTimeout : timeout;
 
