@@ -24,6 +24,7 @@ A thread-safe, production-ready generic object pool for **.NET 8, .NET 9, and .N
 - [Async Operations](#async-operations)
 - [Result-Based API](#result-based-api)
 - [Disclaimer](#disclaimer)
+- [Changelog](CHANGELOG.md)
 
 ---
 
@@ -101,7 +102,18 @@ services.AddObjectPool<DbConnection>(builder => builder
     .WithMaxActiveObjects(20)
     .WithDefaultTimeout(TimeSpan.FromSeconds(5)));
 
-// Dynamic pool with IServiceProvider access
+// Dynamic pool — fluent chain (returns ObjectPoolBuilder<T>)
+services.AddDynamicObjectPool<DbConnection>(sp => CreateConnection())
+    .WithMaxSize(100)
+    .WithMaxActiveObjects(50)
+    .WithDefaultTimeout(TimeSpan.FromSeconds(5))
+    .WithCircuitBreaker(failureThreshold: 5, openDuration: TimeSpan.FromSeconds(30))
+    .WithTimeToLive(TimeSpan.FromMinutes(30))
+    .WithIdleTimeout(TimeSpan.FromMinutes(5))
+    .WithAutoWarmupPercentage(targetPercentage: 50)
+    .WithTelemetry(meterName: "MyApp.Pools");
+
+// Dynamic pool — legacy overload with config action (returns IServiceCollection)
 services.AddDynamicObjectPool<IDbConnectionFactory>(
     sp => sp.GetRequiredService<IDbConnectionFactory>().Create(),
     config => config.MaxPoolSize = 100);
@@ -118,6 +130,8 @@ services.AddObjectPools(pools =>
     pools.AddDynamicPool<DbConnection>(sp => new SqlConnection(cs));
 });
 ```
+
+The fluent `AddDynamicObjectPool` overload chains all configuration directly on the builder and registers warmup hosted services and telemetry meters automatically. The legacy overload (with an `Action<PoolConfiguration<T>>` parameter) is still supported for backwards compatibility.
 
 Resolve from DI:
 
@@ -404,3 +418,9 @@ if (result.IsSuccess)
 ## License
 
 MIT — see [LICENSE](LICENSE)
+
+---
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for the full version history.

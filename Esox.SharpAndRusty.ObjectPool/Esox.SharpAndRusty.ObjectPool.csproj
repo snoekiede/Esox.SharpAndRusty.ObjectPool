@@ -8,7 +8,7 @@
   </PropertyGroup>
 	<PropertyGroup>
 		<PackageId>Esox.SharpAndRusty.ObjectPool</PackageId>
-		<Version>1.0.1</Version>
+		<Version>1.0.2</Version>
 		<Authors>Iede Snoek</Authors>
 		<Description>A thread-safe, Result-based generic object pool for .NET 8/9/10 with circuit breaker, eviction, lifecycle hooks, and DI support.</Description>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -38,6 +38,7 @@
 	</PropertyGroup>
   <ItemGroup>
     <None Include="..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\CHANGELOG.md" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Esox.SharpAndRusty" Version="1.6.7" />
