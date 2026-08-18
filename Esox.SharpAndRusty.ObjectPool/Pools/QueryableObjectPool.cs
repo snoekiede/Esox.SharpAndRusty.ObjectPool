@@ -11,6 +11,10 @@ using System.Text;
 
 namespace Esox.SharpAndRusty.ObjectPool.Pools;
 
+/// <summary>
+/// A thread-safe, queryable object pool that allows retrieval of objects based on custom queries. It supports synchronous and asynchronous operations, validation, and metrics collection.
+/// </summary>
+/// <typeparam name="T">The type of the objects being pooled</typeparam>
 public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposable where T : notnull
 {
     /// <summary>
@@ -101,7 +105,6 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
     /// Returns an object from the pool. If no objects are available, an exception is thrown.
     /// </summary>
     /// <returns>A PoolModel object</returns>
-    /// <exception cref="NoObjectsInPoolException">Raised when no object could be found</exception>
     public virtual ExtendedResult<PoolModel<T>,Error> GetObject()
     {
         if (Disposed)
@@ -183,7 +186,6 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
     /// Returns an object to the pool. If the object is not in the pool, an exception is thrown.
     /// </summary>
     /// <param name="obj">The object to be returned</param>
-    /// <exception cref="NoObjectsInPoolException">Raised if the object was not in the active objects list</exception>
     public ExtendedResult<Unit, Error> ReturnObject(PoolModel<T> obj)
     {
         if (Disposed)
@@ -332,7 +334,6 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
     /// </summary>
     /// <param name="query">the query to be performed</param>
     /// <returns>an object from the pool</returns>
-    /// <exception cref="NoObjectsInPoolException">Thrown when no objects could be found</exception>
     public ExtendedResult<PoolModel<T>, Error> GetObject(Func<T, bool> query)
     {
         if (Disposed)
@@ -459,7 +460,7 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
         if (!tempStack.IsEmpty)
         {
             // More efficient: Push range instead of individual pushes
-            this.AvailableObjects.PushRange(tempStack.ToArray());
+            this.AvailableObjects.PushRange([.. tempStack]);
         }
 
         if (!foundMatch)

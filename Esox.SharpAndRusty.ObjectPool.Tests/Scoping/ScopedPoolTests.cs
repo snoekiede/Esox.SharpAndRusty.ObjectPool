@@ -1,11 +1,6 @@
 ﻿using Esox.SharpAndRusty.ObjectPool.Scoping;
 using Esox.SharpAndRusty.ObjectPool.Tests.Models;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Esox.SharpAndRusty.Extensions;
 using Esox.SharpAndRusty.ObjectPool.DependencyInjection;
 using Esox.SharpAndRusty.ObjectPool.Pools;
@@ -138,8 +133,8 @@ public class ScopedPoolTests
         var scope2 = PoolScope.FromTenant("tenant2");
 
         // Act
-        Car? car1 = null;
-        Car? car2 = null;
+        Car? car1;
+        Car? car2;
 
         using (AmbientPoolScope.BeginScope(scope1))
         {

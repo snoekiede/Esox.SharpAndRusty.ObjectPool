@@ -1,10 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Esox.SharpAndRusty.ObjectPool.Interfaces;
+﻿using Esox.SharpAndRusty.ObjectPool.Interfaces;
 
 namespace Esox.SharpAndRusty.ObjectPool.Models;
-
+/// <summary>
+/// Represents a wrapper for an object managed by an object pool. The PoolModel encapsulates the pooled object and provides a mechanism to return it to the pool when no longer needed. It implements IDisposable to ensure proper resource management and thread-safe return to the pool.
+/// </summary>
+/// <typeparam name="T">The type of the object being pooled</typeparam>
 public sealed class PoolModel<T> : IDisposable
 {
     private readonly T _value;

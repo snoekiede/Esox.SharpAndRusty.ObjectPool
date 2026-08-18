@@ -2,11 +2,6 @@
 using Esox.SharpAndRusty.ObjectPool.Models;
 using Esox.SharpAndRusty.ObjectPool.Pools;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Esox.SharpAndRusty.Extensions;
 using Esox.SharpAndRusty.ObjectPool.DependencyInjection;
 using Esox.SharpAndRusty.Types;
@@ -33,7 +28,7 @@ public class AsyncValidationTests
             AsyncValidationFunction = async obj =>
             {
                 await Task.Delay(1);
-                var res = (ValidatableResource)obj;
+                var res = obj;
                 res.WasValidatedAsync = true;
                 return res.IsValid ? Unit.Value: Error.New("Not valid");
             }
@@ -61,7 +56,7 @@ public class AsyncValidationTests
             AsyncValidationFunction = async obj =>
             {
                 await Task.Delay(1);
-                var res = (ValidatableResource)obj;
+                var res = obj;
                 return res.IsValid ? Unit.Value : Error.New("Not valid");
             }
         };
@@ -151,7 +146,7 @@ public class AsyncValidationTests
                 await Task.Delay(5);
 
                 // Simulate checking if connection is still alive
-                return resource.IsValid && resource.Id > 0;
+                return resource is { IsValid: true, Id: > 0 };
             })
             .WithMaxSize(10));
 

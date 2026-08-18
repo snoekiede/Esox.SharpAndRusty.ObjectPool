@@ -1,12 +1,7 @@
 ﻿using Esox.SharpAndRusty.ObjectPool.Telemetry;
 using Esox.SharpAndRusty.ObjectPool.Tests.Models;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics.Metrics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Esox.SharpAndRusty.Extensions;
 using Esox.SharpAndRusty.ObjectPool.DependencyInjection;
 

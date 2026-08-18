@@ -4,6 +4,9 @@ using System.Text;
 
 namespace Esox.SharpAndRusty.ObjectPool.Policies;
 
+/// <summary>
+/// Specifies the types of pooling policies available.
+/// </summary>
 public enum PoolingPolicyType
 {
     /// <summary>

@@ -2,11 +2,7 @@
 using Esox.SharpAndRusty.ObjectPool.Models;
 using Esox.SharpAndRusty.ObjectPool.Pools;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace Esox.SharpAndRusty.ObjectPool.DependencyInjection;
 
@@ -16,7 +12,7 @@ namespace Esox.SharpAndRusty.ObjectPool.DependencyInjection;
 /// <typeparam name="T">The type of object to pool</typeparam>
 public class ObjectPoolBuilder<T> where T : class
 {
-    private readonly List<T> _initialObjects = new();
+    private readonly List<T> _initialObjects = [];
     private Func<T>? _factory;
     private readonly PoolConfiguration<T> _configuration = new();
     private bool _enableHealthChecks;
@@ -98,8 +94,8 @@ public class ObjectPoolBuilder<T> where T : class
 
         _configuration.ValidateOnReturn = true;
         _configuration.ValidationFunction = obj => validationFunction(obj)
-            ? Esox.SharpAndRusty.Types.ExtendedResult<Esox.SharpAndRusty.Types.Unit, Esox.SharpAndRusty.Types.Error>.Ok(Esox.SharpAndRusty.Types.Unit.Value)
-            : Esox.SharpAndRusty.Types.ExtendedResult<Esox.SharpAndRusty.Types.Unit, Esox.SharpAndRusty.Types.Error>.Err(Esox.SharpAndRusty.Types.Error.New("Validation failed"));
+            ? Types.ExtendedResult<Types.Unit, Types.Error>.Ok(Types.Unit.Value)
+            : Types.ExtendedResult<Types.Unit, Types.Error>.Err(Types.Error.New("Validation failed"));
         return this;
     }
 

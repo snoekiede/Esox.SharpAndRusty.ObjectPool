@@ -3,13 +3,8 @@ using Esox.SharpAndRusty.ObjectPool.Pools;
 using Esox.SharpAndRusty.ObjectPool.Tests.Models;
 using Microsoft.Extensions.Logging;
 using Moq;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Esox.SharpAndRusty.Extensions;
 using Esox.SharpAndRusty.Types;
 
@@ -232,7 +227,7 @@ public class QueryableObjectPoolExtendedTests
             await pool.GetObjectAsync(cancellationToken: cts.Token));
 
         // Test query-based async with timeout (use fresh non-cancelled token)
-        Assert.True((await pool.GetObjectAsync(c => c.Make == "Ford", TimeSpan.FromMilliseconds(100))).IsFailure);
+        Assert.True((await pool.GetObjectAsync(c => c.Make == "Ford", TimeSpan.FromMilliseconds(100),cts.Token)).IsFailure);
 
         // Test query-based async with cancellation (create new CancellationTokenSource)
         var cts2 = new CancellationTokenSource();
@@ -329,7 +324,7 @@ public class QueryableObjectPoolExtendedTests
         }
 
         // Wait for all tasks to complete
-        Task.WaitAll(tasks.ToArray());
+        Task.WaitAll([.. tasks]);
 
         // Assert
         Assert.Empty(exceptions); // No exceptions should be thrown
@@ -384,7 +379,7 @@ public class QueryableObjectPoolExtendedTests
         var config = new PoolConfiguration<Car>
         {
             ValidateOnReturn = true,
-            ValidationFunction = obj => ((Car)obj).Make != "Citroen" ? Unit.Value : Error.New("No Citroen cars") // Reject Citroen cars
+            ValidationFunction = obj => obj.Make != "Citroen" ? Unit.Value : Error.New("No Citroen cars") // Reject Citroen cars
         };
 
         // Create a custom list with a known count of each type of car
@@ -474,7 +469,7 @@ public class QueryableObjectPoolExtendedTests
         }
 
         // Wait for all tasks to complete
-        Task.WaitAll(tasks.Select(t => t as Task).ToArray());
+        Task.WaitAll([.. tasks.Select(t => t as Task)]);
 
         // Get results
         var results = tasks.Select(t => t.Result).Where(r => r != null).ToList();

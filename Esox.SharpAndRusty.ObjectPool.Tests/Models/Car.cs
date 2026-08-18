@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Esox.SharpAndRusty.ObjectPool.Tests.Models;
+﻿namespace Esox.SharpAndRusty.ObjectPool.Tests.Models;
 
 public class Car(string make, string model)
 {

@@ -4,11 +4,6 @@ using Esox.SharpAndRusty.ObjectPool.Tests.Models;
 using Esox.SharpAndRusty.ObjectPool.Warmup;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Esox.SharpAndRusty.ObjectPool.DependencyInjection;
 
 namespace Esox.SharpAndRusty.ObjectPool.Tests.Warmup;

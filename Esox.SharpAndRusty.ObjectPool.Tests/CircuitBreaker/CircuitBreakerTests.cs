@@ -1,12 +1,6 @@
 ﻿using Esox.SharpAndRusty.ObjectPool.CircuitBreaker;
 using Esox.SharpAndRusty.ObjectPool.Models;
 using Esox.SharpAndRusty.ObjectPool.Pools;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.ConstrainedExecution;
-using System.Text;
-using System.Threading.Tasks;
 using Esox.SharpAndRusty.ObjectPool.Tests.Models;
 
 namespace Esox.SharpAndRusty.ObjectPool.Tests.CircuitBreaker;

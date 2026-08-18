@@ -1,10 +1,5 @@
 ﻿using Esox.SharpAndRusty.ObjectPool.Pools;
 using Esox.SharpAndRusty.ObjectPool.Tests.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Esox.SharpAndRusty.Extensions;
 
 namespace Esox.SharpAndRusty.ObjectPool.Tests;
@@ -54,7 +49,7 @@ public class DynamicPoolTests
                 Assert.True(!string.IsNullOrEmpty(value.Make));
             }));
         }
-        Task.WaitAll(tasks.ToArray());
+        Task.WaitAll([.. tasks]);
         var afterusingCount = objectPool.AvailableObjectCount;
         Assert.Equal(initialCount, afterusingCount);
     }
@@ -75,7 +70,7 @@ public class DynamicPoolTests
                 Assert.True(!string.IsNullOrEmpty(value.Make));
             }));
         }
-        Task.WaitAll(tasks.ToArray());
+        Task.WaitAll([.. tasks]);
 
     }
 }

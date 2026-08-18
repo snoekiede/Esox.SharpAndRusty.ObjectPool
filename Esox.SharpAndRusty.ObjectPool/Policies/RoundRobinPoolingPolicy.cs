@@ -56,6 +56,6 @@ public class RoundRobinPoolingPolicy<T> : IPoolingPolicy<T> where T : notnull
     /// <inheritdoc/>
     public IEnumerable<T> GetAll()
     {
-        return _queue.ToArray();
+        return [.. _queue];
     }
 }

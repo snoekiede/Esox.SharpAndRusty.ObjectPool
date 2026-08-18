@@ -3,17 +3,14 @@ using Esox.SharpAndRusty.ObjectPool.Models;
 using Esox.SharpAndRusty.ObjectPool.Pools;
 using Esox.SharpAndRusty.ObjectPool.Warmup;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 
 namespace Esox.SharpAndRusty.ObjectPool.DependencyInjection;
 
-
+/// <summary>
+/// Extension methods for registering object pools in the dependency injection container
+/// </summary>
 public static class ServiceCollectionExtensions
 {
     /// <param name="services">The service collection</param>

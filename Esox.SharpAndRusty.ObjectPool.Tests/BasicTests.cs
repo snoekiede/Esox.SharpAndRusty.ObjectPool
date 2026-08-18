@@ -1,10 +1,5 @@
 ﻿using Esox.SharpAndRusty.ObjectPool.Models;
 using Esox.SharpAndRusty.ObjectPool.Pools;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Esox.SharpAndRusty.Extensions;
 using Esox.SharpAndRusty.Types;
 
@@ -69,7 +64,7 @@ public class BasicTests
                 Assert.True(value > 0);
             }));
         }
-        Task.WaitAll(tasks.ToArray());
+        Task.WaitAll([.. tasks]);
         var afterusingCount = objectPool.AvailableObjectCount;
         Assert.Equal(11, afterusingCount);
     }

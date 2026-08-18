@@ -1,14 +1,8 @@
 ﻿using Esox.SharpAndRusty.Extensions;
 using Esox.SharpAndRusty.ObjectPool.Pools;
 using Esox.SharpAndRusty.ObjectPool.Tests.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.ConstrainedExecution;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace Esox.SharpAndRusty.ObjectPool;
+namespace Esox.SharpAndRusty.ObjectPool.Tests;
 
 public class QueryableObjectPoolTests
 {
@@ -62,7 +56,7 @@ public class QueryableObjectPoolTests
                 var unused = objectPool.AvailableObjectCount;
             }));
         }
-        Task.WaitAll(tasks.ToArray());
+        Task.WaitAll([.. tasks]);
         var afterusingCount = objectPool.AvailableObjectCount;
         Assert.Equal(11, afterusingCount);
     }
@@ -107,7 +101,7 @@ public class QueryableObjectPoolTests
 
             }));
         }
-        Task.WaitAll(tasks.ToArray());
+        Task.WaitAll([.. tasks]);
         var afterusingCount = objectPool.AvailableObjectCount;
         Assert.Equal(7, afterusingCount);
     }

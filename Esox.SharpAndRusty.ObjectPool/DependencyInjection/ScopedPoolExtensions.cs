@@ -1,10 +1,5 @@
 ﻿using Esox.SharpAndRusty.ObjectPool.Models;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Esox.SharpAndRusty.ObjectPool.Pools;
 using Esox.SharpAndRusty.ObjectPool.Scoping;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -12,6 +7,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Esox.SharpAndRusty.ObjectPool.DependencyInjection;
 
+/// <summary>
+/// Extension methods for registering scoped object pools in the dependency injection container
+/// </summary>
 public static class ScopedPoolExtensions
 {
     /// <param name="services">The service collection</param>

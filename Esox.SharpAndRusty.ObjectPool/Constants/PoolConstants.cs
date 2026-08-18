@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Esox.SharpAndRusty.ObjectPool.Constants;
+﻿namespace Esox.SharpAndRusty.ObjectPool.Constants;
 
 /// <summary>
 /// Constants used throughout the ObjectPool library

@@ -3,11 +3,6 @@ using Esox.SharpAndRusty.ObjectPool.Lifecycle;
 using Esox.SharpAndRusty.ObjectPool.Models;
 using Esox.SharpAndRusty.ObjectPool.Pools;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Esox.SharpAndRusty.Extensions;
 using Esox.SharpAndRusty.ObjectPool.DependencyInjection;
 
@@ -18,7 +13,7 @@ public class AsyncLifecycleHooksTests
     private class TrackedResource
     {
         public int Id { get; set; }
-        public List<string> Events { get; } = new();
+        public List<string> Events { get; } = [];
     }
 
     [Fact]
@@ -58,8 +53,8 @@ public class AsyncLifecycleHooksTests
         var pooled1 = pool.GetObject();
         var pooled2 = pool.GetObject();
 
-        pool.ReturnObject(pooled1.Unwrap());
-        pool.ReturnObject(pooled2.Unwrap());
+        await pool.ReturnObjectAsync(pooled1.Unwrap());
+        await pool.ReturnObjectAsync(pooled2.Unwrap());
 
         // Assert - Just check that the pool was configured
         Assert.NotNull(pool);
@@ -88,7 +83,7 @@ public class AsyncLifecycleHooksTests
         var resource2 = new TrackedResource { Id = 2 };
         var pool = new DynamicObjectPool<TrackedResource>(
             () => new TrackedResource(),
-            new List<TrackedResource> { resource1, resource2 },
+            [resource1, resource2],
             config);
 
         // Act
@@ -99,7 +94,7 @@ public class AsyncLifecycleHooksTests
     }
 
     [Fact]
-    public async Task MixedLifecycleHooks_Configuration_ShouldWork()
+    public void MixedLifecycleHooks_Configuration_ShouldWork()
     {
         // Arrange
         var hooks = new LifecycleHooks<TrackedResource>

@@ -2,12 +2,6 @@
 using Esox.SharpAndRusty.ObjectPool.Pools;
 using Esox.SharpAndRusty.ObjectPool.Tests.Models;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Timers;
 using Esox.SharpAndRusty.Extensions;
 using Esox.SharpAndRusty.Types;
 using Moq;
@@ -87,7 +81,7 @@ public class ExtendedCoverageTests
             ValidationFunction = obj =>
             {
                 validationCalled = true;
-                return (int)obj > 5 ? Unit.Value : Error.New("Only values > 5 are valid"); // Only values > 5 are valid
+                return obj > 5 ? Unit.Value : Error.New("Only values > 5 are valid"); // Only values > 5 are valid
             }
         };
 
@@ -112,7 +106,7 @@ public class ExtendedCoverageTests
         var config = new PoolConfiguration<int>
         {
             ValidateOnReturn = true,
-            ValidationFunction = obj => (int)obj > 5 ? Unit.Value : Error.New("Only values > 5 are valid") // Only values > 5 are valid
+            ValidationFunction = obj => obj > 5 ? Unit.Value : Error.New("Only values > 5 are valid") // Only values > 5 are valid
         };
 
         var initialObjects = new List<int> { 3 }; // Invalid from the start

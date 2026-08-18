@@ -4,9 +4,9 @@ using Esox.SharpAndRusty.ObjectPool.Interfaces;
 using Esox.SharpAndRusty.ObjectPool.Models;
 using Esox.SharpAndRusty.ObjectPool.Pools;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 
-namespace EsoxSolutions.SharpAndRusty.ObjectPool.Tests.Async;
+
+namespace Esox.SharpAndRusty.ObjectPool.Tests.Async;
 
 public class AsyncDisposalTests
 {
@@ -57,7 +57,7 @@ public class AsyncDisposalTests
         // Arrange
         var resource1 = new AsyncDisposableResource();
         var resource2 = new AsyncDisposableResource();
-        var pool = new ObjectPool<AsyncDisposableResource>(new List<AsyncDisposableResource> { resource1, resource2 });
+        var pool = new ObjectPool<AsyncDisposableResource>([resource1, resource2]);
 
         // Act
         await pool.DisposeAsync();
@@ -75,7 +75,7 @@ public class AsyncDisposalTests
         // Arrange
         var resource1 = new SyncDisposableResource();
         var resource2 = new SyncDisposableResource();
-        var pool = new ObjectPool<SyncDisposableResource>(new List<SyncDisposableResource> { resource1, resource2 });
+        var pool = new ObjectPool<SyncDisposableResource>([resource1, resource2]);
 
         // Act
         await pool.DisposeAsync();
@@ -90,7 +90,7 @@ public class AsyncDisposalTests
     {
         // Arrange
         var resource = new BothDisposableResource();
-        var pool = new ObjectPool<BothDisposableResource>(new List<BothDisposableResource> { resource });
+        var pool = new ObjectPool<BothDisposableResource>([resource]);
 
         // Act
         await pool.DisposeAsync();
@@ -106,7 +106,7 @@ public class AsyncDisposalTests
         // Arrange
         var resource1 = new AsyncDisposableResource();
         var resource2 = new AsyncDisposableResource();
-        var pool = new ObjectPool<AsyncDisposableResource>(new List<AsyncDisposableResource> { resource1, resource2 });
+        var pool = new ObjectPool<AsyncDisposableResource>([resource1, resource2]);
 
         // Get one object (make it active)
         var pooled = pool.GetObject();
@@ -124,7 +124,7 @@ public class AsyncDisposalTests
     {
         // Arrange
         var resource = new AsyncDisposableResource();
-        var pool = new ObjectPool<AsyncDisposableResource>(new List<AsyncDisposableResource> { resource });
+        var pool = new ObjectPool<AsyncDisposableResource>([resource]);
 
         // Act
         await pool.DisposeAsync();
@@ -187,9 +187,9 @@ public class AsyncDisposalTests
         disposedResources.Add(pooled2.Unwrap().Unwrap());
         disposedResources.Add(pooled3.Unwrap().Unwrap());
 
-        pool.ReturnObject(pooled1.Unwrap());
-        pool.ReturnObject(pooled2.Unwrap());
-        pool.ReturnObject(pooled3.Unwrap());
+        await pool.ReturnObjectAsync(pooled1.Unwrap());
+        await pool.ReturnObjectAsync(pooled2.Unwrap());
+        await pool.ReturnObjectAsync(pooled3.Unwrap());
 
         // Act
         await provider.DisposeAsync();

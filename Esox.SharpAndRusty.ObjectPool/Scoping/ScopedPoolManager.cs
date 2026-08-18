@@ -267,7 +267,7 @@ public class ScopedPoolManager<T> : IDisposable where T : class
     /// </summary>
     public IEnumerable<PoolScope> GetActiveScopes()
     {
-        return _scopedPools.Keys.ToList();
+        return [.. _scopedPools.Keys];
     }
 
     /// <summary>

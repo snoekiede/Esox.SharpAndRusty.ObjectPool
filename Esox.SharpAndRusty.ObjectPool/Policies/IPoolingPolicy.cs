@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Esox.SharpAndRusty.ObjectPool.Policies;
+﻿namespace Esox.SharpAndRusty.ObjectPool.Policies;
 
 /// <summary>
 /// Defines the strategy for how objects are stored and retrieved from the pool

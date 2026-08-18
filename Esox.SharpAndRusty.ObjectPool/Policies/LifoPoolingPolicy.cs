@@ -7,6 +7,10 @@ using System.Threading.Tasks;
 
 namespace Esox.SharpAndRusty.ObjectPool.Policies;
 
+/// <summary>
+/// A pooling policy that follows a Last-In-First-Out (LIFO) strategy.
+/// </summary>
+/// <typeparam name="T">The type of the objects being pooled</typeparam>
 public class LifoPoolingPolicy<T> : IPoolingPolicy<T> where T : notnull
 {
     private readonly ConcurrentStack<T> _stack = new();
@@ -39,7 +43,7 @@ public class LifoPoolingPolicy<T> : IPoolingPolicy<T> where T : notnull
     /// <inheritdoc/>
     public IEnumerable<T> GetAll()
     {
-        return _stack.ToArray();
+        return [.. _stack];
     }
 }
 

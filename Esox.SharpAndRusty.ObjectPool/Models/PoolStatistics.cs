@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Esox.SharpAndRusty.ObjectPool.Models;
+﻿namespace Esox.SharpAndRusty.ObjectPool.Models;
 
 /// <summary>
 /// Statistics for an object pool. All counter mutations are thread-safe via <see cref="Interlocked"/>.

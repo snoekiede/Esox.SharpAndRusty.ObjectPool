@@ -1,9 +1,4 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Esox.SharpAndRusty.ObjectPool.Interfaces;
 using Esox.SharpAndRusty.ObjectPool.Telemetry;
 using Microsoft.Extensions.DependencyInjection.Extensions;

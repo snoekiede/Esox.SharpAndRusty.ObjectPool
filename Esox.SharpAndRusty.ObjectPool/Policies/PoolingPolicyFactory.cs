@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace Esox.SharpAndRusty.ObjectPool.Policies;
 
+/// <summary>
+/// A factory class for creating various types of pooling policies.
+/// </summary>
 public static class PoolingPolicyFactory
 {
     /// <summary>

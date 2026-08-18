@@ -1,11 +1,6 @@
 ﻿using Esox.SharpAndRusty.ObjectPool.Models;
 using Esox.SharpAndRusty.ObjectPool.Pools;
 using Esox.SharpAndRusty.ObjectPool.Tests.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Esox.SharpAndRusty.Extensions;
 using Esox.SharpAndRusty.Types;
 
@@ -289,7 +284,7 @@ public class ProductionFeaturesTests
         var config = new PoolConfiguration<int>
         {
             ValidateOnReturn = true,
-            ValidationFunction = obj => (int)obj > 5 ? Unit.Value : Error.New("Value must be greater than 5") // Only allow values > 5
+            ValidationFunction = obj => obj > 5 ? Unit.Value : Error.New("Value must be greater than 5") // Only allow values > 5
         };
 
         var initialObjects = new List<int> { 10 }; // Valid object

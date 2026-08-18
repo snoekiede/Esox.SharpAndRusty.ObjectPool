@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Esox.SharpAndRusty.ObjectPool.Interfaces;
+﻿namespace Esox.SharpAndRusty.ObjectPool.Interfaces;
 
 /// <summary>
 /// Interface for exporting pool metrics to monitoring systems

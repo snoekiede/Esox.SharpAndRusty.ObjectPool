@@ -12,7 +12,10 @@ using System.Diagnostics;
 using System.Text;
 
 namespace Esox.SharpAndRusty.ObjectPool.Pools;
-
+/// <summary>
+/// A dynamic object pool that supports on-demand object creation, eviction policies, circuit breaker protection, and lifecycle hooks. This pool allows for flexible management of pooled objects, including warming up the pool to a desired size or percentage of capacity.
+/// </summary>
+/// <typeparam name="T">The type of the objects being pooled</typeparam>
 public class DynamicObjectPool<T> : ObjectPool<T>, IObjectPoolWarmer<T> where T : class
 {
     /// <summary>
@@ -110,7 +113,7 @@ public class DynamicObjectPool<T> : ObjectPool<T>, IObjectPoolWarmer<T> where T 
     /// </summary>
     /// <param name="factory">A function that creates new instances of the pooled object. This function is called when the pool needs to
     /// allocate a new object.</param>
-    /// <param name="configuration">An optional <see cref="PoolConfiguration"/> object that specifies the settings for the object pool, such as
+    /// <param name="configuration">An optional <see cref="PoolConfiguration{T}"/> object that specifies the settings for the object pool, such as
     /// maximum size and eviction policies. If null, default settings are used.</param>
     /// <param name="logger">An optional <see cref="ILogger{TCategoryName}"/> instance used to log diagnostic information about the
     /// pool's behavior. If null, no logging is performed.</param>
@@ -477,6 +480,12 @@ public class DynamicObjectPool<T> : ObjectPool<T>, IObjectPoolWarmer<T> where T 
         Logger?.LogWarning("Circuit breaker manually tripped");
     }
 
+    /// <summary>
+    /// Warms up the pool by creating objects up to the target size.
+    /// </summary>
+    /// <param name="targetSize">The desired number of objects in the pool after warm-up.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>An <see cref="ExtendedResult{Unit, Error}"/> indicating success or failure.</returns>
     public async Task<ExtendedResult<Unit,Error>> WarmUpAsync(int targetSize, CancellationToken cancellationToken = default)
     {
         if (_factory is null)

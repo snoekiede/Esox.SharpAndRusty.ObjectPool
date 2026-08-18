@@ -88,7 +88,6 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
     /// Returns an object from the pool. If no objects are available, an exception is thrown.
     /// </summary>
     /// <returns>A PoolModel object</returns>
-    /// <exception cref="NoObjectsInPoolException">Raised when no object could be found</exception>
     public virtual ExtendedResult<PoolModel<T>,Error> GetObject()
     {
         if (Disposed)
@@ -130,7 +129,6 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
     /// Returns an object to the pool. If the object is not in the pool, an exception is thrown.
     /// </summary>
     /// <param name="obj">The object to be returned</param>
-    /// <exception cref="NoObjectsInPoolException">Raised if the object was not in the active objects list</exception>
     public ExtendedResult<Unit,Error> ReturnObject(PoolModel<T> obj)
     {
         if (Disposed)
@@ -194,7 +192,6 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
     /// Asynchronously returns an object to the pool with async validation support
     /// </summary>
     /// <param name="obj">The object to be returned</param>
-    /// <exception cref="NoObjectsInPoolException">Raised if the object was not in the active objects list</exception>
     public async ValueTask<ExtendedResult<Unit, Error>> ReturnObjectAsync(PoolModel<T> obj)
     {
         if (Disposed)

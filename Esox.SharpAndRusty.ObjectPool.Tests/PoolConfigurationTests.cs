@@ -1,10 +1,5 @@
 ﻿using Esox.SharpAndRusty.ObjectPool.Models;
 using Esox.SharpAndRusty.ObjectPool.Pools;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Esox.SharpAndRusty.Extensions;
 using Esox.SharpAndRusty.Types;
 
@@ -76,7 +71,7 @@ public class PoolConfigurationTests
         var config = new PoolConfiguration<int>
         {
             ValidateOnReturn = true,
-            ValidationFunction = obj => (int)obj > 5 ? Unit.Value : Error.New("Only values > 5 are valid") // Only values > 5 are valid
+            ValidationFunction = obj => obj > 5 ? Unit.Value : Error.New("Only values > 5 are valid") // Only values > 5 are valid
         };
 
         var initialObjects = new List<int> { 10, 3 };

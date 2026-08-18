@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Concurrent;
+
 
 namespace Esox.SharpAndRusty.ObjectPool.Policies;
 
@@ -45,7 +41,7 @@ public class FifoPoolingPolicy<T> : IPoolingPolicy<T> where T : notnull
     /// <inheritdoc/>
     public IEnumerable<T> GetAll()
     {
-        return _queue.ToArray();
+        return [.. _queue];
     }
 }
 

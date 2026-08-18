@@ -1,9 +1,5 @@
 ﻿using Esox.SharpAndRusty.ObjectPool.Policies;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace Esox.SharpAndRusty.ObjectPool.Tests.Policies;
 
@@ -11,8 +7,8 @@ public class PriorityPoolingPolicyTests
 {
     private class PriorityItem
     {
-        public string Name { get; set; } = string.Empty;
-        public int Priority { get; set; }
+        public string Name { get; init; } = string.Empty;
+        public int Priority { get; init; }
     }
 
     [Fact]

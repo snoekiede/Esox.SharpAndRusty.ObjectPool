@@ -1,13 +1,12 @@
 ﻿using Esox.SharpAndRusty.ObjectPool.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Esox.SharpAndRusty.ObjectPool.HealthChecks;
 
+/// <summary>
+/// Health check for monitoring the status of an object pool
+/// </summary>
+/// <typeparam name="T">The type of objects managed by the pool</typeparam>
 public class ObjectPoolHealthCheck<T> : IHealthCheck where T : class
 {
     private readonly IObjectPool<T> _pool;

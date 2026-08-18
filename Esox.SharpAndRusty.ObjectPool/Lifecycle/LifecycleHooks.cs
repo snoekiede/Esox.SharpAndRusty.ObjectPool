@@ -1,10 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Esox.SharpAndRusty.Types;
+﻿using Esox.SharpAndRusty.Types;
 
 namespace Esox.SharpAndRusty.ObjectPool.Lifecycle;
 
+/// <summary>
+/// Lifecycle hooks for object pool events
+/// </summary>
+/// <typeparam name="T"></typeparam>
 public class LifecycleHooks<T> where T : notnull
 {
     /// <summary>
