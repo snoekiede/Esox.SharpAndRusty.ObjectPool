@@ -6,10 +6,7 @@ using Esox.SharpAndRusty.ObjectPool.Models;
 using Esox.SharpAndRusty.ObjectPool.Warmup;
 using Esox.SharpAndRusty.Types;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Text;
 
 namespace Esox.SharpAndRusty.ObjectPool.Pools;
 /// <summary>

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Esox.SharpAndRusty.Types;
+﻿using Esox.SharpAndRusty.Types;
 
 namespace Esox.SharpAndRusty.ObjectPool.Warmup;
 

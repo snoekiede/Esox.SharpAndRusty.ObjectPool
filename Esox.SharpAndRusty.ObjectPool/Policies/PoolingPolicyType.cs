@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Esox.SharpAndRusty.ObjectPool.Policies;
+﻿namespace Esox.SharpAndRusty.ObjectPool.Policies;
 
 /// <summary>
 /// Specifies the types of pooling policies available.

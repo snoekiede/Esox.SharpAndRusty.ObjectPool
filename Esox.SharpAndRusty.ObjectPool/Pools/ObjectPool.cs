@@ -1,11 +1,7 @@
 ﻿using Esox.SharpAndRusty.ObjectPool.Interfaces;
 using Esox.SharpAndRusty.ObjectPool.Models;
 using Microsoft.Extensions.Logging;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Text;
-using Esox.SharpAndRusty.Extensions;
 using Esox.SharpAndRusty.ObjectPool.Constants;
 using Esox.SharpAndRusty.ObjectPool.Metrics;
 using Esox.SharpAndRusty.Types;
@@ -398,7 +394,7 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
         if (poolModel.IsSuccess)
         {
             Logger?.LogDebug(PoolConstants.Messages.AsyncRetrievalSuccess);
-            return poolModel!;  
+            return poolModel;  
         }
 
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -436,7 +432,7 @@ public class ObjectPool<T> : IObjectPool<T>, IPoolHealth, IPoolMetrics, IDisposa
             if (poolModel.IsSuccess)
             {
                 Logger?.LogDebug(PoolConstants.Messages.AsyncRetrievalSuccess);
-                return poolModel!;
+                return poolModel;
             }
             // Another thread consumed the object; loop and wait again.
         }

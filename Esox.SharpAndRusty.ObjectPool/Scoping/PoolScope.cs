@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Esox.SharpAndRusty.ObjectPool.Scoping;
+﻿namespace Esox.SharpAndRusty.ObjectPool.Scoping;
 
 /// <summary>
 /// Represents a scope identifier for scoped object pools

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Esox.SharpAndRusty.ObjectPool.Policies;
+﻿namespace Esox.SharpAndRusty.ObjectPool.Policies;
 
 /// <summary>
 /// A factory class for creating various types of pooling policies.

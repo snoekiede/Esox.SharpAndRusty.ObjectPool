@@ -1,12 +1,7 @@
 ﻿using Esox.SharpAndRusty.ObjectPool.Interfaces;
 using Esox.SharpAndRusty.ObjectPool.Models;
 using Microsoft.Extensions.Logging;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Esox.SharpAndRusty.Extensions;
 
 namespace Esox.SharpAndRusty.ObjectPool.Scoping;

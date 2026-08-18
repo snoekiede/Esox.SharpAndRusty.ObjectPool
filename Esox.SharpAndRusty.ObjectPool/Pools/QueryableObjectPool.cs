@@ -4,10 +4,8 @@ using Esox.SharpAndRusty.ObjectPool.Metrics;
 using Esox.SharpAndRusty.ObjectPool.Models;
 using Esox.SharpAndRusty.Types;
 using Microsoft.Extensions.Logging;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Text;
+
 
 namespace Esox.SharpAndRusty.ObjectPool.Pools;
 
@@ -338,7 +336,7 @@ public class QueryableObjectPool<T>: IQueryableObjectPool<T>, IPoolHealth, IPool
     {
         if (Disposed)
         {
-            return Error.New($"ObjectDisposedException: {nameof(QueryableObjectPool<T>)}");
+            return Error.New($"ObjectDisposedException: {nameof(QueryableObjectPool<>)}");
         }
 
         Logger?.LogDebug(PoolConstants.Messages.AttemptingToGetObjectFromPoolUsingQueryAvailableCount, AvailableObjects.Count);
