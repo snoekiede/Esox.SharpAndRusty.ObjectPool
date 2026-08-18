@@ -50,6 +50,45 @@ public static class ServiceCollectionExtensions
         }
 
         /// <summary>
+        /// Adds a dynamic object pool to the service collection and returns an <see cref="ObjectPoolBuilder{T}"/>
+        /// for fluent configuration of circuit breaker, eviction, warmup, and telemetry.
+        /// </summary>
+        /// <typeparam name="T">The type of object to pool</typeparam>
+        /// <param name="factory">Factory method that uses <see cref="IServiceProvider"/> for dependencies</param>
+        /// <returns>An <see cref="ObjectPoolBuilder{T}"/> for further fluent configuration</returns>
+        /// <example>
+        /// <code>
+        /// services.AddDynamicObjectPool&lt;DbConnection&gt;(sp => CreateConnection())
+        ///     .WithMaxSize(100)
+        ///     .WithCircuitBreaker(failureThreshold: 5)
+        ///     .WithTimeToLive(TimeSpan.FromMinutes(30))
+        ///     .WithAutoWarmupPercentage(50)
+        ///     .WithTelemetry(meterName: "MyApp.Pools");
+        /// </code>
+        /// </example>
+        public ObjectPoolBuilder<T> AddDynamicObjectPool<T>(Func<IServiceProvider, T> factory) where T : class
+        {
+            ArgumentNullException.ThrowIfNull(factory);
+
+            var builder = new ObjectPoolBuilder<T>()
+                .AttachServices(services);
+
+            services.TryAddSingleton(builder);
+
+            services.TryAddSingleton<DynamicObjectPool<T>>(sp =>
+            {
+                var logger = sp.GetService<ILogger<ObjectPool<T>>>();
+                T PoolFactory() => factory(sp);
+                return new DynamicObjectPool<T>(PoolFactory, [], builder._configuration, logger);
+            });
+
+            services.TryAddSingleton<IObjectPool<T>>(sp => sp.GetRequiredService<DynamicObjectPool<T>>());
+            services.TryAddSingleton<IObjectPoolWarmer<T>>(sp => sp.GetRequiredService<DynamicObjectPool<T>>());
+
+            return builder;
+        }
+
+        /// <summary>
         /// Adds a dynamic object pool to the service collection
         /// </summary>
         /// <typeparam name="T">The type of object to pool</typeparam>

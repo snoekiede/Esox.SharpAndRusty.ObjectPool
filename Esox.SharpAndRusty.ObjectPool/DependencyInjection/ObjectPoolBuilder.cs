@@ -1,6 +1,9 @@
 ﻿using Esox.SharpAndRusty.ObjectPool.Interfaces;
 using Esox.SharpAndRusty.ObjectPool.Models;
 using Esox.SharpAndRusty.ObjectPool.Pools;
+using Esox.SharpAndRusty.ObjectPool.Telemetry;
+using Esox.SharpAndRusty.ObjectPool.Warmup;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 
@@ -14,9 +17,19 @@ public class ObjectPoolBuilder<T> where T : class
 {
     private readonly List<T> _initialObjects = [];
     private Func<T>? _factory;
-    private readonly PoolConfiguration<T> _configuration = new();
+    internal readonly PoolConfiguration<T> _configuration = new();
     private bool _enableHealthChecks;
     private PoolType _poolType = PoolType.Standard;
+
+    /// <summary>Optional service collection for registering hosted services and meters during chain configuration.</summary>
+    internal IServiceCollection? Services { get; private set; }
+
+    /// <summary>Attaches a service collection so fluent builder calls can register warmup and telemetry services.</summary>
+    internal ObjectPoolBuilder<T> AttachServices(IServiceCollection services)
+    {
+        Services = services;
+        return this;
+    }
 
     /// <summary>
     /// Sets the initial objects for the pool
@@ -96,6 +109,32 @@ public class ObjectPoolBuilder<T> where T : class
         _configuration.ValidationFunction = obj => validationFunction(obj)
             ? Types.ExtendedResult<Types.Unit, Types.Error>.Ok(Types.Unit.Value)
             : Types.ExtendedResult<Types.Unit, Types.Error>.Err(Types.Error.New("Validation failed"));
+        return this;
+    }
+
+    /// <summary>
+    /// Configures a pool to warm up to a percentage of capacity on application startup.
+    /// Requires the builder to have been obtained from <c>AddDynamicObjectPool</c>.
+    /// </summary>
+    /// <param name="targetPercentage">Target percentage (0-100) of maximum capacity to pre-create.</param>
+    public ObjectPoolBuilder<T> WithAutoWarmupPercentage(double targetPercentage)
+    {
+        if (targetPercentage < 0 || targetPercentage > 100)
+            throw new ArgumentOutOfRangeException(nameof(targetPercentage), "Target percentage must be between 0 and 100");
+
+        Services?.WithAutoWarmupPercentage<T>(targetPercentage);
+        return this;
+    }
+
+    /// <summary>
+    /// Adds OpenTelemetry metrics for this pool.
+    /// Requires the builder to have been obtained from <c>AddDynamicObjectPool</c>.
+    /// </summary>
+    /// <param name="meterName">Optional meter name (default: "EsoxSolutions.ObjectPool").</param>
+    /// <param name="poolName">Optional pool name tag.</param>
+    public ObjectPoolBuilder<T> WithTelemetry(string? meterName = null, string? poolName = null)
+    {
+        Services?.AddObjectPoolMetrics<T>(meterName, poolName);
         return this;
     }
 

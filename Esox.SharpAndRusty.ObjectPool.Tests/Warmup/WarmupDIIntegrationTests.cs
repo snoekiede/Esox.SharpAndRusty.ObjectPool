@@ -113,4 +113,56 @@ public class WarmupDiIntegrationTests
         Assert.IsAssignableFrom<Interfaces.IPoolMetrics>(pool);
         Assert.IsAssignableFrom<Interfaces.IPoolHealth>(pool);
     }
+
+    [Fact]
+    public async Task FluentOverload_WithAutoWarmupPercentage_WarmsUpPoolOnStartup()
+    {
+        // Arrange — use the new fluent overload that returns ObjectPoolBuilder<T>
+        var services = new ServiceCollection();
+
+        services.AddDynamicObjectPool<Car>(sp => new Car("Test", "Model"))
+            .WithMaxSize(100)
+            .WithAutoWarmupPercentage(25);
+
+        var provider = services.BuildServiceProvider();
+
+        // Trigger hosted service startup
+        var hostedServices = provider.GetServices<Microsoft.Extensions.Hosting.IHostedService>();
+        foreach (var service in hostedServices)
+        {
+            await service.StartAsync(CancellationToken.None);
+        }
+
+        await Task.Delay(200);
+
+        // Assert
+        var warmer = provider.GetRequiredService<IObjectPoolWarmer<Car>>();
+        var status = warmer.GetWarmupStatus();
+
+        Assert.True(status.IsWarmedUp);
+        Assert.Equal(25, status.ObjectsCreated); // 25% of 100
+    }
+
+    [Fact]
+    public void FluentOverload_CanResolveAllPoolInterfaces()
+    {
+        // Arrange — verify interface registrations via the new fluent overload
+        var services = new ServiceCollection();
+
+        services.AddDynamicObjectPool<Car>(sp => new Car("Test", "Model"))
+            .WithMaxSize(100);
+
+        var provider = services.BuildServiceProvider();
+
+        // Assert
+        var pool = provider.GetService<Interfaces.IObjectPool<Car>>();
+        Assert.NotNull(pool);
+
+        var warmer = provider.GetService<IObjectPoolWarmer<Car>>();
+        Assert.NotNull(warmer);
+
+        Assert.Same(pool, warmer);
+        Assert.IsAssignableFrom<Interfaces.IPoolMetrics>(pool);
+        Assert.IsAssignableFrom<Interfaces.IPoolHealth>(pool);
+    }
 }
