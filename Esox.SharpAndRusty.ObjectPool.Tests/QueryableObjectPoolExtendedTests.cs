@@ -227,7 +227,7 @@ public class QueryableObjectPoolExtendedTests
             await pool.GetObjectAsync(cancellationToken: cts.Token));
 
         // Test query-based async with timeout (use fresh non-cancelled token)
-        Assert.True((await pool.GetObjectAsync(c => c.Make == "Ford", TimeSpan.FromMilliseconds(100),cts.Token)).IsFailure);
+        Assert.True((await pool.GetObjectAsync(c => c.Make == "Ford", TimeSpan.FromMilliseconds(100), CancellationToken.None)).IsFailure);
 
         // Test query-based async with cancellation (create new CancellationTokenSource)
         var cts2 = new CancellationTokenSource();
